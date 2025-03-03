@@ -1,188 +1,148 @@
-# Argus
+# LLM Query and Embedding System
 
-# LLM Evaluation Framework
+This repository contains a modular system for querying multiple LLM models, embedding their responses, and retrieving them based on model, time, or semantic similarity.
 
 ## Overview
 
-This project provides a comprehensive framework for evaluating Large Language Models (LLMs). As LLMs become increasingly integrated into various applicationsâfrom chatbots and virtual assistants to content creation and code generationâensuring their reliability, accuracy, and ethical behavior is paramount.
+The system consists of three main components:
 
-This framework offers tools, metrics, and protocols for thorough LLM evaluation, helping developers and researchers assess model performance, detect biases, and ensure ethical outputs.
+1. **LLM Query Module (`llm_query.py`)**: Query multiple LLM models with text prompts and organize their responses
+2. **Embedding Store Module (`embedding_store.py`)**: Embed LLM responses using Hugging Face models and store them in a ChromaDB vector database
+3. **Diverse Queries (`diverse_queries.py`)**: A collection of 100 diverse queries across 10 themes for testing LLM capabilities
 
-## Key Features
+## Installation
 
-- **Comprehensive Metrics Suite**: Evaluate LLMs using ground truth-based metrics, text generation metrics, and specialized evaluation criteria
-- **Flexible Evaluation Protocols**: Implement train-test splits, cross-validation techniques, and human evaluation processes
-- **Advanced Monitoring**: Track model performance, detect anomalies, and analyze user feedback in real-time
-- **Semantic Drift Detection**: Identify and mitigate changes in meaning that can affect model outputs over time
-- **LLM-as-a-Judge Capabilities**: Leverage other LLMs to evaluate model outputs in a scalable way
+### Requirements
 
-## Metrics Included
+- Python 3.7+
+- Required packages:
+  - `litellm`: For querying different LLM models through a unified API
+  - `sentence-transformers`: For text embedding (e.g., BAAI/bge-base-en-v1.5)
+  - `chromadb`: For vector storage and retrieval
+  - `pydantic`: For data validation
 
-### Ground Truth-Based Metrics
-- Answer Relevance
-- QA Correctness
-
-### Text Generation Metrics
-- BLEU (Bilingual Evaluation Understudy)
-- ROUGE (Recall-Oriented Understudy for Gisting Evaluation)
-- METEOR (Metric for Evaluation of Translation with Explicit ORdering)
-
-### Other Metrics
-- Accuracy
-- Recall
-- F1 Score
-- Coherence
-- Perplexity
-- BERTScore
-- Latency
-- Toxicity Assessment
-
-## Getting Started
-
-### Prerequisites
-- Python 3.8+
-- Required packages (see `requirements.txt`)
-
-### Installation
+Install the requirements:
 
 ```bash
-# Clone the repository
-git clone https://github.com/yourusername/llm-evaluation.git
-cd llm-evaluation
-
-# Create a virtual environment
-python -m venv venv
-source venv/bin/activate  # On Windows, use: venv\Scripts\activate
-
-# Install dependencies
-pip install -r requirements.txt
+pip install litellm sentence-transformers chromadb pydantic
 ```
 
-### Basic Usage
+## Usage
+
+### Basic Example
 
 ```python
-from llm_evaluation import Evaluator
+from llm_query import query_llm_models
+from embedding_store import embed_and_store_model_outputs, query_vector_database
+from diverse_queries import get_queries_by_theme
 
-# Initialize the evaluator with your model
-evaluator = Evaluator(model="your-model-name")
+# 1. Get some diverse prompts
+prompts = get_queries_by_theme("science_technology")[:3]  # First 3 science prompts
 
-# Run a basic evaluation
-results = evaluator.evaluate(
-    dataset="your-dataset",
-    metrics=["accuracy", "latency", "toxicity"]
+# 2. Query models
+models = ["gpt-3.5-turbo", "claude-3-opus-20240229"]
+model_responses = query_llm_models(models, prompts)
+
+# 3. Embed and store responses
+collection, embedding_model, batch_id, timestamp = embed_and_store_model_outputs(
+    model_outputs=model_responses,
+    embedding_model_name="BAAI/bge-base-en-v1.5",
+    persist_directory="./my_vector_db"
 )
 
-# View the results
-print(results.summary())
-```
-
-## Evaluation Protocols
-
-The framework supports multiple evaluation protocols:
-
-1. **Train-Test Split**: Divide your dataset into training and testing subsets
-2. **Cross-Validation**: Use various cross-validation techniques:
-   - Holdout Validation
-   - K-Fold Cross Validation
-   - Leave-One-Out Cross Validation (LOOCV)
-   - Stratified Cross-Validation
-3. **Human Evaluation**: Incorporate human feedback using structured evaluation forms
-
-## Advanced Features
-
-### LLM-as-a-Judge
-
-Use powerful LLMs to evaluate the outputs of other models:
-
-```python
-from llm_evaluation import LLMJudge
-
-# Initialize the judge
-judge = LLMJudge(model="judge-model-name")
-
-# Evaluate outputs
-scores = judge.evaluate(
-    outputs=model_outputs,
-    criteria=["relevance", "accuracy", "coherence"]
+# 4. Retrieve semantically similar responses later
+results = query_vector_database(
+    collection=collection,
+    query_text="Explain artificial intelligence concepts",
+    n_results=3
 )
+
+# Print the results
+for i, result in enumerate(results):
+    print(f"Result {i+1} from {result['metadata'].get('model_name')}:")
+    print(f"Text: {result['text'][:200]}...")  # First 200 chars
 ```
 
-### Real-time Monitoring
+### Advanced Retrieval Options
 
-Monitor your LLM in production:
+The system offers multiple ways to retrieve responses:
 
 ```python
-from llm_evaluation import Monitor
+from datetime import datetime, timedelta
+from embedding_store import (
+    get_responses_by_model,
+    get_responses_by_time_range,
+    get_responses_by_batch_id
+)
 
-# Initialize the monitor
-monitor = Monitor(model="your-model-name")
+# Retrieve by model
+gpt_responses = get_responses_by_model(
+    collection=collection,
+    model_name="gpt-3.5-turbo",
+    query_text="ethics of AI"  # Optional semantic search
+)
 
-# Start monitoring
-monitor.start(
-    metrics=["latency", "toxicity", "hallucination"],
-    alert_threshold=0.8
+# Retrieve by time range
+yesterday = datetime.now() - timedelta(days=1)
+recent_responses = get_responses_by_time_range(
+    collection=collection,
+    start_time=yesterday,
+    model_name="claude-3-opus-20240229"  # Optional model filter
+)
+
+# Retrieve by batch ID
+batch_responses = get_responses_by_batch_id(
+    collection=collection,
+    batch_id=batch_id
 )
 ```
 
-### Semantic Drift Detection
+## Module Details
 
-Track and manage semantic drift:
+### LLM Query Module
 
-```python
-from llm_evaluation import DriftDetector
+The `llm_query.py` module provides:
 
-# Initialize the detector
-detector = DriftDetector()
+- Functions to query multiple LLM models with a list of prompts
+- Structured response objects with metadata
+- Batch tracking with unique batch IDs
+- Detailed logging and error handling
 
-# Check for drift
-drift_report = detector.check(
-    model="your-model-name",
-    reference_data="baseline-data",
-    current_data="current-data"
-)
-```
+### Embedding Store Module
 
-## Building a Custom Evaluation Framework
+The `embedding_store.py` module provides:
 
-To build a custom evaluation framework:
+- Functions to embed text using Hugging Face models
+- Storage of embeddings in ChromaDB with rich metadata
+- Retrieval based on semantic similarity, model, time, or batch ID
+- Utility functions for managing the vector database
 
-1. **Define Objectives**: Clearly define what aspects of LLM performance you want to assess
-2. **Select Metrics**: Choose appropriate evaluation metrics aligned with your objectives
-3. **Create Test Cases**: Develop diverse test cases covering various scenarios
-4. **Implement Scoring**: Create consistent scoring mechanisms for each metric
-5. **Automate Evaluation**: Streamline testing and integrate with CI/CD pipelines
-6. **Analyze and Iterate**: Use evaluation results to improve your LLM applications
+### Diverse Queries Module
 
-## Open-Source Tools Integration
+The `diverse_queries.py` module provides:
 
-This framework integrates with several popular open-source evaluation tools:
+- 100 high-quality, diverse queries across 10 themes
+- Each theme contains 10 semantically diverse queries
+- Functions to retrieve queries by theme or get all queries
 
-- **DeepEval**: For summarization accuracy and hallucination detection
-- **Opik by Comet**: For tracking, annotation, and refinement across environments
-- **RAGAs**: For evaluating Retrieval-Augmented Generation pipelines
-- **Deepchecks**: For dataset bias detection and model performance assessment
-- **Evalverse**: For unified evaluation and collaboration integration
+## Example Script
 
-## Contributing
+See `example_usage.py` for a complete demonstration of the system's capabilities.
 
-Contributions are welcome! Please feel free to submit a Pull Request.
+## Best Practices
 
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add some amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
+1. **Use Batch IDs**: Always keep track of batch IDs for easier retrieval and organization
+2. **Add Metadata**: Include relevant metadata when storing responses for better filtering
+3. **Proper Error Handling**: Handle potential errors during model queries and database operations
+4. **Monitor Performance**: Log query times and response lengths to optimize your workflow
+5. **Iterative Testing**: Test with small query batches before scaling to larger workloads
+
+## Limitations
+
+- The system relies on external services for model queries (through litellm)
+- Large embedding batches may require significant memory
+- ChromaDB performance may degrade with very large collections
 
 ## License
 
 This project is licensed under the MIT License - see the LICENSE file for details.
-
-## Acknowledgments
-
-- This framework builds on research from various papers in the field of LLM evaluation
-- Special thanks to the authors of referenced research papers and open-source tools
-- Thanks to the open-source community for providing valuable tools and resources
-
-## Contact
-
-Project Link: [https://github.com/rbownes/argus](https://github.com/rbownes/argus)
