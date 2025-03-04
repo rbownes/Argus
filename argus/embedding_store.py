@@ -57,7 +57,7 @@ class EmbeddingParams(BaseModel):
     """Pydantic model for validating embedding and storage parameters."""
     model_config = ConfigDict(arbitrary_types_allowed=True)
     
-    model_outputs: Union[Dict[str, List[str]], Dict[str, List[LLMResponse]]] = Field(
+    model_outputs: Dict[str, List[Any]] = Field(
         ..., description="Dictionary of model names to lists of responses (text or LLMResponse objects)"
     )
     prompts: Optional[List[str]] = Field(
@@ -79,37 +79,42 @@ class EmbeddingParams(BaseModel):
         default=None, description="Timestamp when these queries were run"
     )
     
-    @validator('model_outputs')
-    def validate_model_outputs(cls, v):
-        if not v:
+    @root_validator(pre=True)
+    def validate_model_outputs(cls, values):
+        model_outputs = values.get('model_outputs')
+        prompts = values.get('prompts')
+        
+        if not model_outputs:
             raise ValueError("Model outputs dictionary cannot be empty")
         
         # Check data type of the values
-        for model, responses in v.items():
+        for model, responses in model_outputs.items():
             if not responses:
                 raise ValueError(f"Responses list for model {model} cannot be empty")
-                
-            # Check if responses are strings or LLMResponse objects
-            if responses and isinstance(responses[0], str):
+            
+            # Get the type of the first response
+            first_response = responses[0]
+            
+            # Check if responses are strings
+            if isinstance(first_response, str):
                 # If responses are strings, prompts are required
-                return v
-        
-        return v
-    
-    @validator('prompts')
-    def validate_prompts(cls, v, values):
-        model_outputs = values.get('model_outputs')
-        
-        # If model_outputs is a dict of str -> List[str], prompts are required
-        if model_outputs:
-            first_model = next(iter(model_outputs))
-            if model_outputs[first_model] and isinstance(model_outputs[first_model][0], str):
-                if not v:
+                if not prompts:
                     raise ValueError("Prompts list is required when response texts are provided as strings")
-                if any(len(responses) != len(v) for responses in model_outputs.values()):
+                if any(len(responses) != len(prompts) for responses in model_outputs.values()):
                     raise ValueError("Number of responses for each model must match number of prompts")
+                # Verify all responses are strings
+                if not all(isinstance(r, str) for r in responses):
+                    raise ValueError(f"All responses for model {model} must be strings")
+            
+            # Check if responses are LLMResponse objects
+            elif hasattr(first_response, 'model') and hasattr(first_response, 'prompt') and hasattr(first_response, 'response_text'):
+                # Verify all responses have required attributes
+                if not all(hasattr(r, 'model') and hasattr(r, 'prompt') and hasattr(r, 'response_text') for r in responses):
+                    raise ValueError(f"All responses for model {model} must be valid LLMResponse objects")
+            else:
+                raise ValueError(f"Responses for model {model} must be either strings or LLMResponse objects")
         
-        return v
+        return values
     
     @validator('timestamp', pre=True, always=True)
     def set_timestamp(cls, v):
@@ -121,7 +126,7 @@ class EmbeddingParams(BaseModel):
 
 
 def embed_and_store_model_outputs(
-    model_outputs: Union[Dict[str, List[str]], Dict[str, List[LLMResponse]]],
+    model_outputs: Dict[str, List[Any]],
     prompts: Optional[List[str]] = None,
     embedding_model_name: str = "BAAI/bge-base-en-v1.5",
     persist_directory: Optional[str] = "./chroma_db",
