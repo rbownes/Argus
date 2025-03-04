@@ -9,6 +9,7 @@ This module provides:
 
 import os
 import json
+import uuid
 import logging
 import sqlite3
 import datetime
@@ -593,7 +594,6 @@ class SQLiteStorage:
 class InfluxDBStorage:
     """
     InfluxDB-based storage for time-series metrics data.
-    Optimized for tracking metrics over time.
     """
     
     def __init__(self, url: str = "http://localhost:8086", token: Optional[str] = None,
@@ -603,49 +603,57 @@ class InfluxDBStorage:
         
         Args:
             url: InfluxDB server URL
-            token: Authentication token (or None for local dev instances)
+            token: Authentication token
             org: Organization name
-            bucket: Bucket name for metrics
+            bucket: Bucket name
         """
         self.url = url
         self.token = token
         self.org = org
         self.bucket = bucket
         self.client = None
+        self.write_api = None
+        self.initialized = False
         
-        if INFLUXDB_AVAILABLE:
-            self.initialize()
-        else:
-            logger.warning("InfluxDB client not available. Metrics will not be stored in time series database.")
+        # Initialize connection
+        self.initialize()
     
     def initialize(self) -> None:
-        """Initialize the InfluxDB connection and create bucket if needed."""
+        """Initialize the InfluxDB client and write API."""
         if not INFLUXDB_AVAILABLE:
+            logger.warning("InfluxDB client not available. Skipping initialization.")
             return
         
         try:
-            # Use token authentication if provided, otherwise no auth for local dev
-            self.client = InfluxDBClient(url=self.url, token=self.token, org=self.org)
-            
-            # Check if the bucket exists, create if not
-            buckets_api = self.client.buckets_api()
-            bucket_names = [bucket.name for bucket in buckets_api.find_buckets().buckets]
-            
-            if self.bucket not in bucket_names:
-                logger.info(f"Creating InfluxDB bucket: {self.bucket}")
-                buckets_api.create_bucket(bucket_name=self.bucket, org=self.org)
-            
+            self.client = InfluxDBClient(
+                url=self.url,
+                token=self.token,
+                org=self.org
+            )
+            self.write_api = self.client.write_api(write_options=SYNCHRONOUS)
+            self.initialized = True
             logger.info(f"Connected to InfluxDB at {self.url}")
-            
         except Exception as e:
-            logger.error(f"Error connecting to InfluxDB: {str(e)}")
-            self.client = None
+            logger.error(f"Failed to initialize InfluxDB client: {str(e)}")
+            self.initialized = False
     
     def close(self) -> None:
-        """Close the InfluxDB connection."""
+        """Close the InfluxDB client and cleanup resources."""
+        if self.write_api:
+            try:
+                self.write_api.close()
+            except Exception as e:
+                logger.error(f"Error closing write API: {str(e)}")
+            self.write_api = None
+            
         if self.client:
-            self.client.close()
+            try:
+                self.client.close()
+            except Exception as e:
+                logger.error(f"Error closing InfluxDB client: {str(e)}")
             self.client = None
+            
+        self.initialized = False
     
     def store_metric(self, metric_name: str, value: float, batch_id: str, 
                     model_name: Optional[str] = None, timestamp: Optional[datetime.datetime] = None,
@@ -670,9 +678,6 @@ class InfluxDBStorage:
             return False
         
         try:
-            # Get the write API
-            write_api = self.client.write_api(write_options=SYNCHRONOUS)
-            
             # Create a data point
             point = Point("llm_metric")
             
@@ -702,7 +707,7 @@ class InfluxDBStorage:
                 point = point.time(timestamp, WritePrecision.NS)
             
             # Write the point
-            write_api.write(bucket=self.bucket, record=point)
+            self.write_api.write(bucket=self.bucket, record=point)
             return True
             
         except Exception as e:
@@ -723,9 +728,6 @@ class InfluxDBStorage:
             return 0
         
         try:
-            # Get the write API
-            write_api = self.client.write_api(write_options=SYNCHRONOUS)
-            
             points = []
             for metric in metrics:
                 # Extract required fields
@@ -771,7 +773,7 @@ class InfluxDBStorage:
             
             # Write all points
             if points:
-                write_api.write(bucket=self.bucket, record=points)
+                self.write_api.write(bucket=self.bucket, record=points)
             
             return len(points)
             
@@ -928,13 +930,21 @@ class StorageManager:
         
         # Store in SQLite
         for metric in metrics:
+            # Validate required fields
+            required_fields = ["metric_name", "batch_id", "value", "sample_count"]
+            missing_fields = [field for field in required_fields if field not in metric or metric[field] is None]
+            
+            if missing_fields:
+                logger.warning(f"Skipping metric due to missing required fields: {missing_fields}")
+                continue
+                
             metric_id = metric.get("result_id", str(uuid.uuid4()))
-            name = metric.get("metric_name")
-            batch_id = metric.get("batch_id")
+            name = metric["metric_name"]
+            batch_id = metric["batch_id"]
             model_name = metric.get("model_name")
             timestamp = metric.get("timestamp", datetime.datetime.now())
-            value = metric.get("value")
-            sample_count = metric.get("sample_count", 0)
+            value = metric["value"]
+            sample_count = metric["sample_count"]
             success = metric.get("success", True)
             error = metric.get("error")
             metadata = metric.get("metadata", {})
@@ -946,25 +956,31 @@ class StorageManager:
                 except ValueError:
                     timestamp = datetime.datetime.now()
             
-            self.sqlite.store_metric_result(
-                metric_id=metric_id,
-                name=name,
-                batch_id=batch_id,
-                model_name=model_name,
-                timestamp=timestamp,
-                value=value,
-                sample_count=sample_count,
-                success=success,
-                error=error,
-                metadata=metadata,
-                details=details
-            )
-            
-            sqlite_count += 1
+            try:
+                self.sqlite.store_metric_result(
+                    metric_id=metric_id,
+                    name=name,
+                    batch_id=batch_id,
+                    model_name=model_name,
+                    timestamp=timestamp,
+                    value=value,
+                    sample_count=sample_count,
+                    success=success,
+                    error=error,
+                    metadata=metadata,
+                    details=details
+                )
+                sqlite_count += 1
+            except Exception as e:
+                logger.error(f"Failed to store metric in SQLite: {str(e)}")
+                continue
         
         # Store in InfluxDB if available
         if self.influxdb:
-            influxdb_count = self.influxdb.store_batch_metrics(metrics)
+            try:
+                influxdb_count = self.influxdb.store_batch_metrics(metrics)
+            except Exception as e:
+                logger.error(f"Failed to store metrics in InfluxDB: {str(e)}")
         
         return sqlite_count, influxdb_count
 

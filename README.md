@@ -146,3 +146,36 @@ See `example_usage.py` for a complete demonstration of the system's capabilities
 ## License
 
 This project is licensed under the MIT License - see the LICENSE file for details.
+
+
+## Rough Architecture
+
+┌───────────────┐     ┌─────────────────┐     ┌─────────────────┐
+│  ChromaDB     │────▶│  Metrics        │────▶│  Results        │
+│  Data Source  │     │  Pipeline       │     │  Storage        │
+└───────────────┘     └─────────────────┘     └─────────────────┘
+                             │
+                             ▼
+                      ┌─────────────────┐
+                      │  Metric         │
+                      │  Registry       │
+                      └─────────────────┘
+                             │
+       ┌───────────┬─────────┴─────────┬───────────┐
+       ▼           ▼                   ▼           ▼
+┌─────────────┐┌─────────────┐  ┌─────────────┐┌─────────────┐
+│ Built-in    ││ DeepEval    │  │ Custom      ││ Custom      │
+│ Metrics     ││ Metrics     │  │ Metric 1    ││ Metric N    │
+└─────────────┘└─────────────┘  └─────────────┘└─────────────┘
+
+┌─────────────────┐     ┌───────────────────┐     ┌───────────────────────┐
+│  LLM Outputs    │────▶│  Storage Layer    │────▶│  Visualization Layer  │
+└─────────────────┘     └───────────────────┘     └───────────────────────┘
+                               │                              │
+                         ┌─────┴─────┐               ┌────────┴────────┐
+                         │           │               │                 │
+                    ┌────▼─────┐┌────▼─────┐    ┌────▼─────┐     ┌────▼─────┐
+                    │  SQLite  ││ InfluxDB │    │  Grafana │     │ Streamlit│
+                    └──────────┘└──────────┘    └──────────┘     └──────────┘
+                    Structured    Time-series    Dashboards &     Interactive
+                       Data          Data         Monitoring       Analysis

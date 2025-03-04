@@ -1,0 +1,4 @@
+metric_name,batch_id,model_name,timestamp,value,sample_count,success,metadata_computation_time_seconds
+ResponseLengthMetric,batch-134f498e-dce2-4776-8069-0b4190d14911,gpt-3.5-turbo,2025-03-04 23:36:17.324593,963.6666666666666,3,True,0.0008611679077148438
+TokenRatioMetric,batch-134f498e-dce2-4776-8069-0b4190d14911,gpt-3.5-turbo,2025-03-04 23:36:17.325454,0.15842269111034243,3,True,0.0008611679077148438
+PositivityScoreMetric,batch-134f498e-dce2-4776-8069-0b4190d14911,gpt-3.5-turbo,2025-03-04 23:36:17.326548,0.0,3,True,0.0010890960693359375
