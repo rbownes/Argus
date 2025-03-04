@@ -57,7 +57,7 @@ class EmbeddingParams(BaseModel):
     """Pydantic model for validating embedding and storage parameters."""
     model_config = ConfigDict(arbitrary_types_allowed=True)
     
-    model_outputs: Dict[str, List[Any]] = Field(
+    model_outputs: Union[Dict[str, List[str]], Dict[str, List[LLMResponse]]] = Field(
         ..., description="Dictionary of model names to lists of responses (text or LLMResponse objects)"
     )
     prompts: Optional[List[str]] = Field(
@@ -79,32 +79,22 @@ class EmbeddingParams(BaseModel):
         default=None, description="Timestamp when these queries were run"
     )
     
-    @root_validator(pre=True)
-    def validate_model_outputs(cls, values):
-        model_outputs = values.get('model_outputs')
-        if not model_outputs:
+    @validator('model_outputs')
+    def validate_model_outputs(cls, v):
+        if not v:
             raise ValueError("Model outputs dictionary cannot be empty")
         
         # Check data type of the values
-        for model, responses in model_outputs.items():
+        for model, responses in v.items():
             if not responses:
                 raise ValueError(f"Responses list for model {model} cannot be empty")
                 
             # Check if responses are strings or LLMResponse objects
-            first_response = responses[0]
-            if isinstance(first_response, str):
-                response_type = str
-            elif hasattr(first_response, 'model') and hasattr(first_response, 'prompt') and hasattr(first_response, 'response_text'):
-                # Check for LLMResponse-like object by checking for required attributes
-                response_type = type(first_response)
-            else:
-                raise ValueError(f"Responses must be either strings or LLMResponse-like objects with model, prompt, and response_text attributes")
-                
-            # Check that all responses in this list are of the same type
-            if not all(isinstance(r, response_type) for r in responses):
-                raise ValueError(f"All responses for model {model} must be of the same type")
-                
-        return values
+            if responses and isinstance(responses[0], str):
+                # If responses are strings, prompts are required
+                return v
+        
+        return v
     
     @validator('prompts')
     def validate_prompts(cls, v, values):
