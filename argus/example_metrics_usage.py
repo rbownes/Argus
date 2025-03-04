@@ -116,7 +116,7 @@ def generate_sample_batch_for_testing(num_queries: int = 3) -> str:
     # Define models to query
     models = [
         "gpt-3.5-turbo", 
-        "claude-3-opus-20240229"
+        # "claude-3-opus-20240229"
     ]
     
     # Select sample prompts
