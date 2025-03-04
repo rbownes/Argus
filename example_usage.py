@@ -21,8 +21,8 @@ logger = logging.getLogger(__name__)
 
 # Import our modules
 try:
-    from llm_query import query_llm_models, get_batch_summary
-    from embedding_store import (
+    from argus.llm_query import query_llm_models, get_batch_summary
+    from argus.embedding_store import (
         embed_and_store_model_outputs, 
         query_vector_database,
         get_responses_by_model,
@@ -30,7 +30,7 @@ try:
         get_responses_by_batch_id,
         list_available_batches
     )
-    from diverse_queries import get_queries_by_theme, get_themes, get_all_queries
+    from argus.diverse_queries import get_queries_by_theme, get_themes, get_all_queries
 except ImportError as e:
     logger.error(f"Failed to import required modules: {e}")
     sys.exit(1)
@@ -47,7 +47,7 @@ def run_test_queries(num_queries_per_theme: int = 2, themes: List[str] = None) -
     # Define the models to query
     models = [
         "gpt-3.5-turbo",  # OpenAI
-        "claude-3-opus-20240229"  # Anthropic
+        # "claude-3-opus-20240229"  # Anthropic
     ]
     
     # Get available themes

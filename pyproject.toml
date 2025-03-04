@@ -1,0 +1,12 @@
+[project]
+name = "argus"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "chromadb>=0.6.3",
+    "litellm>=1.62.1",
+    "pydantic>=2.10.6",
+    "sentence-transformers>=3.4.1",
+]
