@@ -1,181 +1,293 @@
-# LLM Query and Embedding System
+# LLM Evaluation Framework
 
-This repository contains a modular system for querying multiple LLM models, embedding their responses, and retrieving them based on model, time, or semantic similarity.
+A modular, extensible microservices-based framework for evaluating and comparing large language models across various dimensions.
 
 ## Overview
 
-The system consists of three main components:
+This framework enables systematic evaluation of LLMs by:
 
-1. **LLM Query Module (`llm_query.py`)**: Query multiple LLM models with text prompts and organize their responses
-2. **Embedding Store Module (`embedding_store.py`)**: Embed LLM responses using Hugging Face models and store them in a ChromaDB vector database
-3. **Diverse Queries (`diverse_queries.py`)**: A collection of 100 diverse queries across 10 themes for testing LLM capabilities
+- Managing test prompts across diverse categories
+- Interfacing with multiple LLM providers
+- Running configurable evaluations on responses
+- Storing results and embeddings for analysis
+- Visualizing performance metrics and comparisons
+
+## Architecture
+
+The system consists of several independent microservices:
+
+- **Prompt Service**: Manages test prompts, categories, and tags
+- **LLM Query Service**: Interfaces with multiple LLM providers
+- **Evaluation Service**: Runs configurable evaluations on responses
+- **Storage Service**: Persists data in PostgreSQL and ChromaDB
+- **API Gateway**: Coordinates service communication
+- **Visualization**: Grafana dashboards and Streamlit app
 
 ## Installation
 
-### Requirements
+### Prerequisites
 
-- Python 3.7+
-- Required packages:
-  - `litellm`: For querying different LLM models through a unified API
-  - `sentence-transformers`: For text embedding (e.g., BAAI/bge-base-en-v1.5)
-  - `chromadb`: For vector storage and retrieval
-  - `pydantic`: For data validation
+- Docker and Docker Compose
+- Python 3.9+
+- LLM API keys (optional)
 
-Install the requirements:
+### Setup
+
+1. Clone the repository:
 
 ```bash
-pip install litellm sentence-transformers chromadb pydantic
+git clone https://github.com/yourusername/llm-eval.git
+cd llm-eval
+```
+
+2. Install Python dependencies:
+
+```bash
+pip install -r requirements.txt
+```
+
+3. (Optional) Set up API keys for LLM providers:
+
+```bash
+export OPENAI_API_KEY=your_openai_key
+export ANTHROPIC_API_KEY=your_anthropic_key
+export COHERE_API_KEY=your_cohere_key
+```
+
+### Running with Docker Compose
+
+Start all services:
+
+```bash
+docker-compose up -d
+```
+
+This will start:
+- PostgreSQL database
+- ChromaDB vector database
+- Core services (prompt, LLM, evaluation, storage)
+- API gateway
+- Grafana for dashboards
+- Streamlit for interactive exploration
+
+## Running Tests
+
+The framework includes comprehensive tests to ensure reliability and correctness.
+
+### Running the Complete Test Suite
+
+To run all tests:
+
+```bash
+# From the project root
+python -m unittest discover -s tests
+```
+
+### Running Specific Test Modules
+
+To run specific test modules:
+
+```bash
+# Example: Run only the core models tests
+python -m unittest tests.test_core_models
+
+# Example: Run only the prompt service tests
+python -m unittest tests.test_prompt_service
+```
+
+### Running with Coverage
+
+To run tests with coverage reporting:
+
+```bash
+# Install coverage if not already installed
+pip install coverage
+
+# Run tests with coverage
+coverage run -m unittest discover -s tests
+
+# Generate coverage report
+coverage report -m
+
+# Generate HTML coverage report for detailed view
+coverage html
+# Then open htmlcov/index.html in your browser
+```
+
+### Running Tests in Docker
+
+You can also run the tests inside a Docker container:
+
+```bash
+# Build the test container
+docker build -f Dockerfile.test -t llm-eval-test .
+
+# Run the tests
+docker run llm-eval-test
 ```
 
 ## Usage
 
-### Basic Example
+### API Endpoints
+
+The system exposes a REST API at `http://localhost:8080` with the following endpoints:
+
+#### Prompts
+
+- `GET /prompts`: List available prompts
+- `POST /prompts`: Create a new prompt
+- `GET /prompts/{id}`: Get a specific prompt
+- `PUT /prompts/{id}`: Update a prompt
+- `DELETE /prompts/{id}`: Delete a prompt
+- `GET /prompts/search?query=...`: Search prompts
+- `POST /prompts/import`: Import prompts from file
+
+#### LLMs
+
+- `GET /models`: List available models
+- `POST /query`: Query a single model
+- `POST /batch`: Run a batch query
+
+#### Evaluations
+
+- `GET /evaluators`: List available evaluators
+- `POST /evaluate`: Evaluate a response
+- `POST /batch-evaluate`: Run batch evaluations
+
+#### Results
+
+- `GET /results`: Get evaluation results
+- `GET /results/model/{model}`: Get results for a specific model
+- `GET /results/compare?models=model1,model2`: Compare models
+
+### Example: Querying and Evaluating
 
 ```python
-from llm_query import query_llm_models
-from embedding_store import embed_and_store_model_outputs, query_vector_database
-from diverse_queries import get_queries_by_theme
+import requests
 
-# 1. Get some diverse prompts
-prompts = get_queries_by_theme("science_technology")[:3]  # First 3 science prompts
+# Base URL for the API
+API_URL = "http://localhost:8080"
 
-# 2. Query models
-models = ["gpt-3.5-turbo", "claude-3-opus-20240229"]
-model_responses = query_llm_models(models, prompts)
+# 1. List available prompts in the "science_technology" category
+resp = requests.get(f"{API_URL}/prompts?category=science_technology")
+prompts = resp.json()
+prompt_ids = [p["id"] for p in prompts[:3]]  # Take the first 3 prompts
 
-# 3. Embed and store responses
-collection, embedding_model, batch_id, timestamp = embed_and_store_model_outputs(
-    model_outputs=model_responses,
-    embedding_model_name="BAAI/bge-base-en-v1.5",
-    persist_directory="./my_vector_db"
-)
+# 2. List available models
+resp = requests.get(f"{API_URL}/models")
+models = resp.json()
+model_names = [m["name"] for m in models if m["supported"]][:2]  # Take first 2 supported models
 
-# 4. Retrieve semantically similar responses later
-results = query_vector_database(
-    collection=collection,
-    query_text="Explain artificial intelligence concepts",
-    n_results=3
-)
+# 3. Run a batch query
+batch_request = {
+    "prompt_ids": prompt_ids,
+    "model_names": model_names,
+    "evaluations": ["toxicity", "relevance", "coherence"]  # Run these evaluations automatically
+}
+resp = requests.post(f"{API_URL}/batch", json=batch_request)
+batch_result = resp.json()
 
-# Print the results
-for i, result in enumerate(results):
-    print(f"Result {i+1} from {result['metadata'].get('model_name')}:")
-    print(f"Text: {result['text'][:200]}...")  # First 200 chars
+# 4. Get the batch results
+batch_id = batch_result["batch_id"]
+resp = requests.get(f"{API_URL}/results?batch_id={batch_id}")
+results = resp.json()
+
+# Print a summary of the results
+for result in results:
+    model = result["model_name"]
+    prompt = result["prompt_text"][:30] + "..."  # Truncate for display
+    evaluations = result["evaluations"]
+    
+    print(f"Model: {model}, Prompt: {prompt}")
+    for eval_type, score in evaluations.items():
+        print(f"  {eval_type}: {score:.2f}")
+    print()
 ```
 
-### Advanced Retrieval Options
+### Visualization
 
-The system offers multiple ways to retrieve responses:
+- Grafana dashboards: `http://localhost:3000` (admin/admin)
+- Streamlit app: `http://localhost:8501`
+
+## Extending the Framework
+
+### Adding Custom Evaluators
+
+1. Create a new evaluator class:
 
 ```python
-from datetime import datetime, timedelta
-from embedding_store import (
-    get_responses_by_model,
-    get_responses_by_time_range,
-    get_responses_by_batch_id
-)
+from llm_eval.services.evaluation_service import EvaluatorInterface
+from llm_eval.core.models import EvaluationType, LLMResponse, EvaluationResult
+from llm_eval.core.utils import Result, generate_id
 
-# Retrieve by model
-gpt_responses = get_responses_by_model(
-    collection=collection,
-    model_name="gpt-3.5-turbo",
-    query_text="ethics of AI"  # Optional semantic search
-)
-
-# Retrieve by time range
-yesterday = datetime.now() - timedelta(days=1)
-recent_responses = get_responses_by_time_range(
-    collection=collection,
-    start_time=yesterday,
-    model_name="claude-3-opus-20240229"  # Optional model filter
-)
-
-# Retrieve by batch ID
-batch_responses = get_responses_by_batch_id(
-    collection=collection,
-    batch_id=batch_id
-)
+class MyCustomEvaluator(EvaluatorInterface):
+    @property
+    def evaluation_type(self) -> EvaluationType:
+        return EvaluationType.CUSTOM
+    
+    async def evaluate(self, response: LLMResponse, **kwargs) -> Result[EvaluationResult]:
+        # Your evaluation logic here
+        score = 0.75  # Example score
+        
+        result = EvaluationResult(
+            id=generate_id(),
+            response_id=response.id,
+            evaluation_type=self.evaluation_type,
+            score=score,
+            explanation="Custom evaluation explanation"
+        )
+        
+        return Result.ok(result)
 ```
 
-## Module Details
+2. Register your evaluator with the service:
 
-### LLM Query Module
+```python
+from llm_eval.services.evaluation_service import EvaluationService
 
-The `llm_query.py` module provides:
+service = EvaluationService()
+await service.register_evaluator(MyCustomEvaluator())
+```
 
-- Functions to query multiple LLM models with a list of prompts
-- Structured response objects with metadata
-- Batch tracking with unique batch IDs
-- Detailed logging and error handling
+### Adding New LLM Providers
 
-### Embedding Store Module
-
-The `embedding_store.py` module provides:
-
-- Functions to embed text using Hugging Face models
-- Storage of embeddings in ChromaDB with rich metadata
-- Retrieval based on semantic similarity, model, time, or batch ID
-- Utility functions for managing the vector database
-
-### Diverse Queries Module
-
-The `diverse_queries.py` module provides:
-
-- 100 high-quality, diverse queries across 10 themes
-- Each theme contains 10 semantically diverse queries
-- Functions to retrieve queries by theme or get all queries
-
-## Example Script
-
-See `example_usage.py` for a complete demonstration of the system's capabilities.
-
-## Best Practices
-
-1. **Use Batch IDs**: Always keep track of batch IDs for easier retrieval and organization
-2. **Add Metadata**: Include relevant metadata when storing responses for better filtering
-3. **Proper Error Handling**: Handle potential errors during model queries and database operations
-4. **Monitor Performance**: Log query times and response lengths to optimize your workflow
-5. **Iterative Testing**: Test with small query batches before scaling to larger workloads
-
-## Limitations
-
-- The system relies on external services for model queries (through litellm)
-- Large embedding batches may require significant memory
-- ChromaDB performance may degrade with very large collections
+Extend the `LiteLLMService` to support additional providers, or create a new implementation of `LLMServiceInterface`.
 
 ## License
 
-This project is licensed under the MIT License - see the LICENSE file for details.
+MIT License
 
+## Diagram
 
-## Rough Architecture
-
-┌───────────────┐     ┌─────────────────┐     ┌─────────────────┐
-│  ChromaDB     │────▶│  Metrics        │────▶│  Results        │
-│  Data Source  │     │  Pipeline       │     │  Storage        │
-└───────────────┘     └─────────────────┘     └─────────────────┘
-                             │
-                             ▼
-                      ┌─────────────────┐
-                      │  Metric         │
-                      │  Registry       │
-                      └─────────────────┘
-                             │
-       ┌───────────┬─────────┴─────────┬───────────┐
-       ▼           ▼                   ▼           ▼
-┌─────────────┐┌─────────────┐  ┌─────────────┐┌─────────────┐
-│ Built-in    ││ DeepEval    │  │ Custom      ││ Custom      │
-│ Metrics     ││ Metrics     │  │ Metric 1    ││ Metric N    │
-└─────────────┘└─────────────┘  └─────────────┘└─────────────┘
-
-┌─────────────────┐     ┌───────────────────┐     ┌───────────────────────┐
-│  LLM Outputs    │────▶│  Storage Layer    │────▶│  Visualization Layer  │
-└─────────────────┘     └───────────────────┘     └───────────────────────┘
-                               │                              │
-                         ┌─────┴─────┐               ┌────────┴────────┐
-                         │           │               │                 │
-                    ┌────▼─────┐┌────▼─────┐    ┌────▼─────┐     ┌────▼─────┐
-                    │  SQLite  ││ InfluxDB │    │  Grafana │     │ Streamlit│
-                    └──────────┘└──────────┘    └──────────┘     └──────────┘
-                    Structured    Time-series    Dashboards &     Interactive
-                       Data          Data         Monitoring       Analysis
+```
+┌─────────────────┐     ┌─────────────────┐     ┌─────────────────┐
+│  Prompt Service │     │   LLM Service   │     │   Evaluation    │
+│                 │     │                 │     │    Service      │
+│ - Store prompts │     │ - Query LLMs    │     │ - Run evals     │
+│ - Categorize    │────>│ - Handle auth   │────>│ - Score outputs │
+│ - Tag/filter    │     │ - Batch process │     │ - Compare models│
+└────────┬────────┘     └────────┬────────┘     └────────┬────────┘
+         │                       │                       │
+         │                       │                       │
+         │                       v                       │
+         │               ┌─────────────────┐            │
+         │               │  API Gateway    │            │
+         └─────────────>│                 │<────────────┘
+                         │ - Coordination  │
+                         │ - Authentication│
+                         └────────┬────────┘
+                                  │
+                                  │
+         ┌──────────────┐         │         ┌──────────────┐
+         │              │         │         │              │
+         │  PostgreSQL  │<────────┴────────>│   ChromaDB   │
+         │              │                   │              │
+         └──────────────┘                   └──────────────┘
+                 ^                                 ^
+                 │                                 │
+                 │                                 │
+         ┌───────┴───────┐               ┌────────┴─────────┐
+         │    Grafana    │               │     Streamlit    │
+         │   Dashboards  │               │  Interactive App │
+         └───────────────┘               └──────────────────┘
+```

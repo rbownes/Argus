@@ -1,22 +1,19 @@
 [project]
-name = "argus"
+name = "llm_eval"
 version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
+    "asyncpg>=0.30.0",
     "chromadb>=0.6.3",
-    "deepeval>=2.4.9",
-    "influxdb-client>=1.48.0",
-    "ipykernel>=6.29.5",
-    "litellm>=1.62.1",
-    "matplotlib>=3.10.1",
+    "fastapi>=0.115.11",
+    "litellm>=1.62.4",
     "pandas>=2.2.3",
     "plotly>=6.0.0",
     "pydantic>=2.10.6",
-    "sentence-transformers>=3.4.1",
+    "requests>=2.32.3",
+    "setuptools>=75.8.2",
     "streamlit>=1.43.0",
+    "uvicorn>=0.34.0",
 ]
-
-[tool.setuptools]
-packages = ["argus"]
