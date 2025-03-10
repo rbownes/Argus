@@ -1,0 +1,268 @@
+{
+  "id": "0bf3174b-50d3-41ed-8b16-7319f16cfb4b",
+  "benchmark_id": "mmlu",
+  "model_names": [
+    "gpt-3.5-turbo",
+    "claude-3-sonnet"
+  ],
+  "config": {
+    "sample_limit": 5,
+    "categories": [
+      "high_school_mathematics",
+      "philosophy"
+    ],
+    "shuffle": true,
+    "include_few_shot": true
+  },
+  "timestamp": "2025-03-10T00:02:28.441863",
+  "results": {
+    "gpt-3.5-turbo": {
+      "id": "2f0fc315-b033-4f1c-99bc-3d9d605d945f",
+      "benchmark_id": "mmlu",
+      "model_name": "gpt-3.5-turbo",
+      "config": {
+        "sample_limit": 5,
+        "categories": [
+          "high_school_mathematics",
+          "philosophy"
+        ],
+        "shuffle": true,
+        "include_few_shot": true
+      },
+      "start_time": "2025-03-10T00:02:27.423499",
+      "end_time": "2025-03-10T00:02:27.929788",
+      "duration_seconds": 0.506289,
+      "sample_count": 5,
+      "evaluated_count": 5,
+      "metrics": {
+        "accuracy": 0.8,
+        "sample_count": 5,
+        "correct_count": 4,
+        "subject_scores": {
+          "high_school_mathematics": {
+            "accuracy": 0.8,
+            "sample_count": 5,
+            "correct_count": 4
+          }
+        },
+        "overall_score": 0.8
+      },
+      "evaluations": [
+        {
+          "sample_id": "11eafa6f-9d44-4ece-b9aa-acb04749d79c",
+          "subject": "high_school_mathematics",
+          "correct": true,
+          "score": 1.0,
+          "expected_answer": "A",
+          "predicted_answer": "A",
+          "question": "What is the slope of the line that passes through the points (2",
+          "options": [
+            " 3) and (6",
+            " 7)?",
+            "0.5",
+            "1"
+          ],
+          "response_text": "Generic response from gpt-3.5-turbo to: Question: If f(x) = x^2 + 3x - 5\nA.  what is f(2)?\nB. 1\nC. 3\nD. 5\nAnswer: A\n\nQuestion: The graph of y = f(x) is shown above. What is the value of f(5)?\nA. 20\nB. 5\nC. 15\nD. 10\nAnswer: D\n\nQuestion: The point (4\nA. f(4)) lies on the graph of f(x) = mx + b. If m = 3\nB.  what is the value of b?\nC. -8\nD. -12\nAnswer: A\n\nQuestion: Solve the following system of equations: 3x + 2y = 12 and 2x - y = 5.\nA. (2\nB.  3)\nC. (2\nD.  -1)\nAnswer: A\n\nQuestion: Simplify the expression (3x^2 + 2x - 1) - (2x^2 - 3x + 5).\nA. x^2 + 5x - 6\nB. 5x^2 - x + 4\nC. x^2 + 5x - 6\nD. 5x^2 + 5x - 6\nAnswer: C\n\nQuestion: What is the slope of the line that passes through the points (2\nA.  3) and (6\nB.  7)?\nC. 0.5\nD. 1\nAnswer:"
+        },
+        {
+          "sample_id": "97c5d3f8-7901-42f9-9f0a-3b2b0cbd0550",
+          "subject": "high_school_mathematics",
+          "correct": false,
+          "score": 0.0,
+          "expected_answer": "C",
+          "predicted_answer": "A",
+          "question": "Solve for x: 2x\u00b2 - 5x - 3 = 0.",
+          "options": [
+            "x = -3/2 or x = 1",
+            "x = 3 or x = -1/2",
+            "x = 3/2 or x = -1",
+            "x = -3 or x = 1/2"
+          ],
+          "response_text": "Generic response from gpt-3.5-turbo to: Question: The point (4\nA. f(4)) lies on the graph of f(x) = mx + b. If m = 3\nB.  what is the value of b?\nC. -8\nD. -12\nAnswer: A\n\nQuestion: If f(x) = x^2 + 3x - 5\nA.  what is f(2)?\nB. 1\nC. 3\nD. 5\nAnswer: A\n\nQuestion: Solve the following system of equations: 3x + 2y = 12 and 2x - y = 5.\nA. (2\nB.  3)\nC. (2\nD.  -1)\nAnswer: A\n\nQuestion: Simplify the expression (3x^2 + 2x - 1) - (2x^2 - 3x + 5).\nA. x^2 + 5x - 6\nB. 5x^2 - x + 4\nC. x^2 + 5x - 6\nD. 5x^2 + 5x - 6\nAnswer: C\n\nQuestion: The graph of y = f(x) is shown above. What is the value of f(5)?\nA. 20\nB. 5\nC. 15\nD. 10\nAnswer: D\n\nQuestion: Solve for x: 2x\u00b2 - 5x - 3 = 0.\nA. x = -3/2 or x = 1\nB. x = 3 or x = -1/2\nC. x = 3/2 or x = -1\nD. x = -3 or x = 1/2\nAnswer:"
+        },
+        {
+          "sample_id": "db1d5d4d-34bc-4a9f-8f5a-b778350db01e",
+          "subject": "high_school_mathematics",
+          "correct": true,
+          "score": 1.0,
+          "expected_answer": "A",
+          "predicted_answer": "A",
+          "question": "If log\u2082x = 3",
+          "options": [
+            " then x = ?",
+            "6",
+            "8",
+            "9"
+          ],
+          "response_text": "Generic response from gpt-3.5-turbo to: Question: Solve the following system of equations: 3x + 2y = 12 and 2x - y = 5.\nA. (2\nB.  3)\nC. (2\nD.  -1)\nAnswer: A\n\nQuestion: Simplify the expression (3x^2 + 2x - 1) - (2x^2 - 3x + 5).\nA. x^2 + 5x - 6\nB. 5x^2 - x + 4\nC. x^2 + 5x - 6\nD. 5x^2 + 5x - 6\nAnswer: C\n\nQuestion: If f(x) = x^2 + 3x - 5\nA.  what is f(2)?\nB. 1\nC. 3\nD. 5\nAnswer: A\n\nQuestion: The point (4\nA. f(4)) lies on the graph of f(x) = mx + b. If m = 3\nB.  what is the value of b?\nC. -8\nD. -12\nAnswer: A\n\nQuestion: The graph of y = f(x) is shown above. What is the value of f(5)?\nA. 20\nB. 5\nC. 15\nD. 10\nAnswer: D\n\nQuestion: If log\u2082x = 3\nA.  then x = ?\nB. 6\nC. 8\nD. 9\nAnswer:"
+        },
+        {
+          "sample_id": "10fae832-6ced-41b2-9dea-221b4c9fc6a7",
+          "subject": "high_school_mathematics",
+          "correct": true,
+          "score": 1.0,
+          "expected_answer": "A",
+          "predicted_answer": "A",
+          "question": "Find the value of x if 3x + 4 = 19.",
+          "options": [
+            "5",
+            "8",
+            "15",
+            "3"
+          ],
+          "response_text": "Generic response from gpt-3.5-turbo to: Question: If f(x) = x^2 + 3x - 5\nA.  what is f(2)?\nB. 1\nC. 3\nD. 5\nAnswer: A\n\nQuestion: The point (4\nA. f(4)) lies on the graph of f(x) = mx + b. If m = 3\nB.  what is the value of b?\nC. -8\nD. -12\nAnswer: A\n\nQuestion: The graph of y = f(x) is shown above. What is the value of f(5)?\nA. 20\nB. 5\nC. 15\nD. 10\nAnswer: D\n\nQuestion: Solve the following system of equations: 3x + 2y = 12 and 2x - y = 5.\nA. (2\nB.  3)\nC. (2\nD.  -1)\nAnswer: A\n\nQuestion: Simplify the expression (3x^2 + 2x - 1) - (2x^2 - 3x + 5).\nA. x^2 + 5x - 6\nB. 5x^2 - x + 4\nC. x^2 + 5x - 6\nD. 5x^2 + 5x - 6\nAnswer: C\n\nQuestion: Find the value of x if 3x + 4 = 19.\nA. 5\nB. 8\nC. 15\nD. 3\nAnswer:"
+        },
+        {
+          "sample_id": "71d9a04f-b3ee-4003-9d26-78ab8eb9ea68",
+          "subject": "high_school_mathematics",
+          "correct": true,
+          "score": 1.0,
+          "expected_answer": "A",
+          "predicted_answer": "A",
+          "question": "The quadratic equation x\u00b2 + bx + c = 0 has roots 3 and -5. What is the value of b?",
+          "options": [
+            "2",
+            "-2",
+            "8",
+            "-8"
+          ],
+          "response_text": "Generic response from gpt-3.5-turbo to: Question: Solve the following system of equations: 3x + 2y = 12 and 2x - y = 5.\nA. (2\nB.  3)\nC. (2\nD.  -1)\nAnswer: A\n\nQuestion: Simplify the expression (3x^2 + 2x - 1) - (2x^2 - 3x + 5).\nA. x^2 + 5x - 6\nB. 5x^2 - x + 4\nC. x^2 + 5x - 6\nD. 5x^2 + 5x - 6\nAnswer: C\n\nQuestion: The graph of y = f(x) is shown above. What is the value of f(5)?\nA. 20\nB. 5\nC. 15\nD. 10\nAnswer: D\n\nQuestion: The point (4\nA. f(4)) lies on the graph of f(x) = mx + b. If m = 3\nB.  what is the value of b?\nC. -8\nD. -12\nAnswer: A\n\nQuestion: If f(x) = x^2 + 3x - 5\nA.  what is f(2)?\nB. 1\nC. 3\nD. 5\nAnswer: A\n\nQuestion: The quadratic equation x\u00b2 + bx + c = 0 has roots 3 and -5. What is the value of b?\nA. 2\nB. -2\nC. 8\nD. -8\nAnswer:"
+        }
+      ]
+    },
+    "claude-3-sonnet": {
+      "id": "1bf05228-6f56-458b-9bdc-f6ebd9a14f34",
+      "benchmark_id": "mmlu",
+      "model_name": "claude-3-sonnet",
+      "config": {
+        "sample_limit": 5,
+        "categories": [
+          "high_school_mathematics",
+          "philosophy"
+        ],
+        "shuffle": true,
+        "include_few_shot": true
+      },
+      "start_time": "2025-03-10T00:02:27.931236",
+      "end_time": "2025-03-10T00:02:28.441805",
+      "duration_seconds": 0.510569,
+      "sample_count": 5,
+      "evaluated_count": 5,
+      "metrics": {
+        "accuracy": 0.6,
+        "sample_count": 5,
+        "correct_count": 3,
+        "subject_scores": {
+          "high_school_mathematics": {
+            "accuracy": 0.6,
+            "sample_count": 5,
+            "correct_count": 3
+          }
+        },
+        "overall_score": 0.6
+      },
+      "evaluations": [
+        {
+          "sample_id": "e4d3d37a-3241-4c52-8924-b4a1ca2f1f7e",
+          "subject": "high_school_mathematics",
+          "correct": false,
+          "score": 0.0,
+          "expected_answer": "A",
+          "predicted_answer": "C",
+          "question": "Find the value of x if 3x + 4 = 19.",
+          "options": [
+            "5",
+            "8",
+            "15",
+            "3"
+          ],
+          "response_text": "Generic response from claude-3-sonnet to: Question: Simplify the expression (3x^2 + 2x - 1) - (2x^2 - 3x + 5).\nA. x^2 + 5x - 6\nB. 5x^2 - x + 4\nC. x^2 + 5x - 6\nD. 5x^2 + 5x - 6\nAnswer: C\n\nQuestion: Solve the following system of equations: 3x + 2y = 12 and 2x - y = 5.\nA. (2\nB.  3)\nC. (2\nD.  -1)\nAnswer: A\n\nQuestion: If f(x) = x^2 + 3x - 5\nA.  what is f(2)?\nB. 1\nC. 3\nD. 5\nAnswer: A\n\nQuestion: The point (4\nA. f(4)) lies on the graph of f(x) = mx + b. If m = 3\nB.  what is the value of b?\nC. -8\nD. -12\nAnswer: A\n\nQuestion: The graph of y = f(x) is shown above. What is the value of f(5)?\nA. 20\nB. 5\nC. 15\nD. 10\nAnswer: D\n\nQuestion: Find the value of x if 3x + 4 = 19.\nA. 5\nB. 8\nC. 15\nD. 3\nAnswer:"
+        },
+        {
+          "sample_id": "dcebf6b8-0d09-4b03-a40c-2314efb6e9b0",
+          "subject": "high_school_mathematics",
+          "correct": true,
+          "score": 1.0,
+          "expected_answer": "A",
+          "predicted_answer": "A",
+          "question": "What is the slope of the line that passes through the points (2",
+          "options": [
+            " 3) and (6",
+            " 7)?",
+            "0.5",
+            "1"
+          ],
+          "response_text": "Generic response from claude-3-sonnet to: Question: If f(x) = x^2 + 3x - 5\nA.  what is f(2)?\nB. 1\nC. 3\nD. 5\nAnswer: A\n\nQuestion: Simplify the expression (3x^2 + 2x - 1) - (2x^2 - 3x + 5).\nA. x^2 + 5x - 6\nB. 5x^2 - x + 4\nC. x^2 + 5x - 6\nD. 5x^2 + 5x - 6\nAnswer: C\n\nQuestion: The graph of y = f(x) is shown above. What is the value of f(5)?\nA. 20\nB. 5\nC. 15\nD. 10\nAnswer: D\n\nQuestion: The point (4\nA. f(4)) lies on the graph of f(x) = mx + b. If m = 3\nB.  what is the value of b?\nC. -8\nD. -12\nAnswer: A\n\nQuestion: Solve the following system of equations: 3x + 2y = 12 and 2x - y = 5.\nA. (2\nB.  3)\nC. (2\nD.  -1)\nAnswer: A\n\nQuestion: What is the slope of the line that passes through the points (2\nA.  3) and (6\nB.  7)?\nC. 0.5\nD. 1\nAnswer:"
+        },
+        {
+          "sample_id": "175e333e-cee3-43ae-9db7-6628eab07a5f",
+          "subject": "high_school_mathematics",
+          "correct": true,
+          "score": 1.0,
+          "expected_answer": "A",
+          "predicted_answer": "A",
+          "question": "If log\u2082x = 3",
+          "options": [
+            " then x = ?",
+            "6",
+            "8",
+            "9"
+          ],
+          "response_text": "Generic response from claude-3-sonnet to: Question: Solve the following system of equations: 3x + 2y = 12 and 2x - y = 5.\nA. (2\nB.  3)\nC. (2\nD.  -1)\nAnswer: A\n\nQuestion: If f(x) = x^2 + 3x - 5\nA.  what is f(2)?\nB. 1\nC. 3\nD. 5\nAnswer: A\n\nQuestion: Simplify the expression (3x^2 + 2x - 1) - (2x^2 - 3x + 5).\nA. x^2 + 5x - 6\nB. 5x^2 - x + 4\nC. x^2 + 5x - 6\nD. 5x^2 + 5x - 6\nAnswer: C\n\nQuestion: The graph of y = f(x) is shown above. What is the value of f(5)?\nA. 20\nB. 5\nC. 15\nD. 10\nAnswer: D\n\nQuestion: The point (4\nA. f(4)) lies on the graph of f(x) = mx + b. If m = 3\nB.  what is the value of b?\nC. -8\nD. -12\nAnswer: A\n\nQuestion: If log\u2082x = 3\nA.  then x = ?\nB. 6\nC. 8\nD. 9\nAnswer:"
+        },
+        {
+          "sample_id": "6565a150-2613-4c9e-835e-c51e573ead0f",
+          "subject": "high_school_mathematics",
+          "correct": true,
+          "score": 1.0,
+          "expected_answer": "C",
+          "predicted_answer": "C",
+          "question": "Solve for x: 2x\u00b2 - 5x - 3 = 0.",
+          "options": [
+            "x = -3/2 or x = 1",
+            "x = 3 or x = -1/2",
+            "x = 3/2 or x = -1",
+            "x = -3 or x = 1/2"
+          ],
+          "response_text": "Generic response from claude-3-sonnet to: Question: Simplify the expression (3x^2 + 2x - 1) - (2x^2 - 3x + 5).\nA. x^2 + 5x - 6\nB. 5x^2 - x + 4\nC. x^2 + 5x - 6\nD. 5x^2 + 5x - 6\nAnswer: C\n\nQuestion: If f(x) = x^2 + 3x - 5\nA.  what is f(2)?\nB. 1\nC. 3\nD. 5\nAnswer: A\n\nQuestion: The point (4\nA. f(4)) lies on the graph of f(x) = mx + b. If m = 3\nB.  what is the value of b?\nC. -8\nD. -12\nAnswer: A\n\nQuestion: The graph of y = f(x) is shown above. What is the value of f(5)?\nA. 20\nB. 5\nC. 15\nD. 10\nAnswer: D\n\nQuestion: Solve the following system of equations: 3x + 2y = 12 and 2x - y = 5.\nA. (2\nB.  3)\nC. (2\nD.  -1)\nAnswer: A\n\nQuestion: Solve for x: 2x\u00b2 - 5x - 3 = 0.\nA. x = -3/2 or x = 1\nB. x = 3 or x = -1/2\nC. x = 3/2 or x = -1\nD. x = -3 or x = 1/2\nAnswer:"
+        },
+        {
+          "sample_id": "f9710b73-72af-4055-88b1-03333dc54e34",
+          "subject": "high_school_mathematics",
+          "correct": false,
+          "score": 0.0,
+          "expected_answer": "A",
+          "predicted_answer": "C",
+          "question": "The quadratic equation x\u00b2 + bx + c = 0 has roots 3 and -5. What is the value of b?",
+          "options": [
+            "2",
+            "-2",
+            "8",
+            "-8"
+          ],
+          "response_text": "Generic response from claude-3-sonnet to: Question: Simplify the expression (3x^2 + 2x - 1) - (2x^2 - 3x + 5).\nA. x^2 + 5x - 6\nB. 5x^2 - x + 4\nC. x^2 + 5x - 6\nD. 5x^2 + 5x - 6\nAnswer: C\n\nQuestion: The point (4\nA. f(4)) lies on the graph of f(x) = mx + b. If m = 3\nB.  what is the value of b?\nC. -8\nD. -12\nAnswer: A\n\nQuestion: If f(x) = x^2 + 3x - 5\nA.  what is f(2)?\nB. 1\nC. 3\nD. 5\nAnswer: A\n\nQuestion: Solve the following system of equations: 3x + 2y = 12 and 2x - y = 5.\nA. (2\nB.  3)\nC. (2\nD.  -1)\nAnswer: A\n\nQuestion: The graph of y = f(x) is shown above. What is the value of f(5)?\nA. 20\nB. 5\nC. 15\nD. 10\nAnswer: D\n\nQuestion: The quadratic equation x\u00b2 + bx + c = 0 has roots 3 and -5. What is the value of b?\nA. 2\nB. -2\nC. 8\nD. -8\nAnswer:"
+        }
+      ]
+    }
+  },
+  "summary": {
+    "models": [
+      "gpt-3.5-turbo",
+      "claude-3-sonnet"
+    ],
+    "overall_scores": {
+      "gpt-3.5-turbo": 0.8,
+      "claude-3-sonnet": 0.6
+    },
+    "ranking": [
+      {
+        "model": "gpt-3.5-turbo",
+        "score": 0.8
+      },
+      {
+        "model": "claude-3-sonnet",
+        "score": 0.6
+      }
+    ]
+  }
+}
