@@ -25,9 +25,17 @@ from llm_eval.services.evaluation_service import (
     EvaluationService,
     ToxicityEvaluator,
     RelevanceEvaluator,
-    CoherenceEvaluator
+    CoherenceEvaluator,
+    LLMJudgeEvaluator
 )
 from llm_eval.services.storage_service import InMemoryStorageService
+from llm_eval.services.benchmark_service import (
+    BenchmarkService,
+    BenchmarkConfig,
+    MMLUBenchmark,
+    TruthfulQABenchmark,
+    GSM8KBenchmark
+)
 
 
 # Initialize the FastAPI app
@@ -42,11 +50,12 @@ prompt_service = None
 llm_service = None
 evaluation_service = None
 storage_service = None
+benchmark_service = None
 
 
 async def init_services():
     """Initialize all services if not already initialized."""
-    global prompt_service, llm_service, evaluation_service, storage_service
+    global prompt_service, llm_service, evaluation_service, storage_service, benchmark_service
     
     if prompt_service is None:
         prompt_service = InMemoryPromptService()
@@ -61,11 +70,41 @@ async def init_services():
         await evaluation_service.register_evaluator(ToxicityEvaluator())
         await evaluation_service.register_evaluator(RelevanceEvaluator())
         await evaluation_service.register_evaluator(CoherenceEvaluator())
+        
+        # Register LLM-as-Judge evaluator
+        judge_evaluator = LLMJudgeEvaluator(
+            llm_service=llm_service,
+            judge_model="gpt-4-turbo",  # Change as needed
+            evaluation_type=EvaluationType.QUALITY
+        )
+        await evaluation_service.register_evaluator(judge_evaluator)
     
     if storage_service is None:
         # Use InMemoryStorageService for testing
         # In production, use StorageService with PostgreSQL and ChromaDB
         storage_service = InMemoryStorageService()
+    
+    if benchmark_service is None:
+        # Initialize benchmark service
+        benchmark_service = BenchmarkService(llm_service=llm_service)
+        
+        # Register benchmarks with custom data paths
+        data_dir = os.environ.get("BENCHMARK_DATA_DIR", "./data")
+        benchmark_service.register_benchmark(
+            "mmlu", 
+            MMLUBenchmark, 
+            data_dir=os.path.join(data_dir, "mmlu")
+        )
+        benchmark_service.register_benchmark(
+            "truthfulqa", 
+            TruthfulQABenchmark, 
+            data_file=os.path.join(data_dir, "truthfulqa/truthfulqa.json")
+        )
+        benchmark_service.register_benchmark(
+            "gsm8k", 
+            GSM8KBenchmark, 
+            data_file=os.path.join(data_dir, "gsm8k/gsm8k.jsonl")
+        )
 
 
 @app.on_event("startup")
@@ -119,6 +158,23 @@ class CompareRequest(BaseModel):
     prompt_ids: Optional[List[str]] = None
 
 
+class BenchmarkListResponse(BaseModel):
+    """Response model for listing available benchmarks."""
+    benchmarks: Dict[str, Dict[str, Any]]
+
+
+class BenchmarkRunRequest(BaseModel):
+    """Request model for running a benchmark."""
+    model_name: str
+    config: Optional[Dict[str, Any]] = None
+
+
+class BenchmarkComparisonRequest(BaseModel):
+    """Request model for comparing models on a benchmark."""
+    model_names: List[str]
+    config: Optional[Dict[str, Any]] = None
+
+
 # Dependency to get services
 async def get_services():
     """Get initialized services."""
@@ -127,7 +183,8 @@ async def get_services():
         "prompt_service": prompt_service,
         "llm_service": llm_service,
         "evaluation_service": evaluation_service,
-        "storage_service": storage_service
+        "storage_service": storage_service,
+        "benchmark_service": benchmark_service
     }
 
 
@@ -490,6 +547,52 @@ async def compare_models(
         model_names=compare_request.model_names,
         evaluation_type=compare_request.evaluation_type,
         prompt_ids=compare_request.prompt_ids
+    )
+    
+    if result.is_err:
+        raise HTTPException(status_code=500, detail=str(result.error))
+    
+    return result.unwrap()
+
+
+# API Routes - Benchmarks
+@app.get("/benchmarks", response_model=BenchmarkListResponse)
+async def list_benchmarks(services=Depends(get_services)):
+    """List available benchmarks."""
+    benchmarks = services["benchmark_service"].get_available_benchmarks()
+    return {"benchmarks": benchmarks}
+
+
+@app.post("/benchmarks/{benchmark_id}/run", response_model=Dict[str, Any])
+async def run_benchmark(
+    benchmark_id: str,
+    request: BenchmarkRunRequest,
+    services=Depends(get_services)
+):
+    """Run a benchmark on a specific model."""
+    result = await services["benchmark_service"].run_benchmark(
+        benchmark_id=benchmark_id,
+        model_name=request.model_name,
+        config=request.config
+    )
+    
+    if result.is_err:
+        raise HTTPException(status_code=500, detail=str(result.error))
+    
+    return result.unwrap()
+
+
+@app.post("/benchmarks/{benchmark_id}/compare", response_model=Dict[str, Any])
+async def compare_benchmarks(
+    benchmark_id: str,
+    request: BenchmarkComparisonRequest,
+    services=Depends(get_services)
+):
+    """Compare multiple models on a benchmark."""
+    result = await services["benchmark_service"].run_benchmark_comparison(
+        benchmark_id=benchmark_id,
+        model_names=request.model_names,
+        config=request.config
     )
     
     if result.is_err:

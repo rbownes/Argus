@@ -1,15 +1,22 @@
 """
-Evaluation Service module for evaluating LLM responses.
+Evaluation service for assessing LLM responses.
 """
-from .interface import EvaluatorInterface, EvaluationServiceInterface
-from .evaluators import ToxicityEvaluator, RelevanceEvaluator, CoherenceEvaluator
-from .service import EvaluationService
+from llm_eval.services.evaluation_service.interface import EvaluatorInterface
+from llm_eval.services.evaluation_service.evaluators import (
+    BaseEvaluator,
+    ToxicityEvaluator,
+    RelevanceEvaluator,
+    CoherenceEvaluator
+)
+from llm_eval.services.evaluation_service.llm_judge_evaluator import LLMJudgeEvaluator
+from llm_eval.services.evaluation_service.service import EvaluationService
 
 __all__ = [
     "EvaluatorInterface",
-    "EvaluationServiceInterface",
+    "BaseEvaluator",
     "ToxicityEvaluator",
     "RelevanceEvaluator",
     "CoherenceEvaluator",
-    "EvaluationService",
+    "LLMJudgeEvaluator",
+    "EvaluationService"
 ]
