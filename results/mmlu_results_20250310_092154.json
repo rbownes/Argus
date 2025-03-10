@@ -1,0 +1,177 @@
+{
+  "id": "5d6df744-446b-476b-973e-3e9dc98eb1fe",
+  "benchmark_id": "mmlu",
+  "model_names": [
+    "gpt-3.5-turbo",
+    "claude-3-sonnet"
+  ],
+  "config": {
+    "sample_limit": 5,
+    "categories": [
+      "high_school_mathematics",
+      "philosophy"
+    ],
+    "shuffle": true
+  },
+  "timestamp": "2025-03-10T09:21:21.474472",
+  "results": {
+    "gpt-3.5-turbo": {
+      "id": "82e9322f-fbc3-4d55-a9b3-fa1be78040d5",
+      "benchmark_id": "mmlu",
+      "model_name": "gpt-3.5-turbo",
+      "config": {
+        "sample_limit": 5,
+        "categories": [
+          "high_school_mathematics",
+          "philosophy"
+        ],
+        "shuffle": true
+      },
+      "start_time": "2025-03-10T09:21:19.797201",
+      "end_time": "2025-03-10T09:21:21.412472",
+      "duration_seconds": 1.615271,
+      "sample_count": 5,
+      "evaluated_count": 5,
+      "metrics": {
+        "accuracy": 0.4,
+        "sample_count": 5,
+        "correct_count": 2,
+        "subject_scores": {
+          "high_school_mathematics": {
+            "accuracy": 0.4,
+            "sample_count": 5,
+            "correct_count": 2
+          }
+        },
+        "overall_score": 0.4
+      },
+      "evaluations": [
+        {
+          "sample_id": "fd1ed5b4-652e-4863-8968-1ecbde0b42f9",
+          "subject": "high_school_mathematics",
+          "correct": false,
+          "score": 0.0,
+          "expected_answer": "A",
+          "predicted_answer": "C",
+          "question": "The quadratic equation x\u00b2 + bx + c = 0 has roots 3 and -5. What is the value of b?",
+          "options": [
+            "2",
+            "-2",
+            "8",
+            "-8"
+          ],
+          "response_text": "C. 2"
+        },
+        {
+          "sample_id": "a335c346-2d0b-4aae-a1a4-9cd3f1b9d94d",
+          "subject": "high_school_mathematics",
+          "correct": false,
+          "score": 0.0,
+          "expected_answer": "A",
+          "predicted_answer": "C",
+          "question": "If log\u2082x = 3",
+          "options": [
+            " then x = ?",
+            "6",
+            "8",
+            "9"
+          ],
+          "response_text": "C. 8"
+        },
+        {
+          "sample_id": "3b222b9c-1b78-4954-b2f9-0f04764712d8",
+          "subject": "high_school_mathematics",
+          "correct": true,
+          "score": 1.0,
+          "expected_answer": "A",
+          "predicted_answer": "A",
+          "question": "Find the value of x if 3x + 4 = 19.",
+          "options": [
+            "5",
+            "8",
+            "15",
+            "3"
+          ],
+          "response_text": "A. 5"
+        },
+        {
+          "sample_id": "192a9696-ac4c-4e6d-8393-b9f177f565e3",
+          "subject": "high_school_mathematics",
+          "correct": true,
+          "score": 1.0,
+          "expected_answer": "C",
+          "predicted_answer": "C",
+          "question": "Solve for x: 2x\u00b2 - 5x - 3 = 0.",
+          "options": [
+            "x = -3/2 or x = 1",
+            "x = 3 or x = -1/2",
+            "x = 3/2 or x = -1",
+            "x = -3 or x = 1/2"
+          ],
+          "response_text": "C. x = 3/2 or x = -1"
+        },
+        {
+          "sample_id": "b8e03be0-f08f-4c2e-827a-92c5a9a94303",
+          "subject": "high_school_mathematics",
+          "correct": false,
+          "score": 0.0,
+          "expected_answer": "A",
+          "predicted_answer": "C",
+          "question": "What is the slope of the line that passes through the points (2",
+          "options": [
+            " 3) and (6",
+            " 7)?",
+            "0.5",
+            "1"
+          ],
+          "response_text": "C. 0.5"
+        }
+      ]
+    },
+    "claude-3-sonnet": {
+      "id": "3cd4718f-2089-4a6d-a932-f242b36cc92a",
+      "benchmark_id": "mmlu",
+      "model_name": "claude-3-sonnet",
+      "config": {
+        "sample_limit": 5,
+        "categories": [
+          "high_school_mathematics",
+          "philosophy"
+        ],
+        "shuffle": true
+      },
+      "start_time": "2025-03-10T09:21:21.415360",
+      "end_time": "2025-03-10T09:21:21.474363",
+      "duration_seconds": 0.059003,
+      "sample_count": 5,
+      "evaluated_count": 0,
+      "metrics": {
+        "accuracy": 0.0,
+        "sample_count": 0,
+        "subject_scores": {},
+        "overall_score": 0.0
+      },
+      "evaluations": []
+    }
+  },
+  "summary": {
+    "models": [
+      "gpt-3.5-turbo",
+      "claude-3-sonnet"
+    ],
+    "overall_scores": {
+      "gpt-3.5-turbo": 0.4,
+      "claude-3-sonnet": 0.0
+    },
+    "ranking": [
+      {
+        "model": "gpt-3.5-turbo",
+        "score": 0.4
+      },
+      {
+        "model": "claude-3-sonnet",
+        "score": 0.0
+      }
+    ]
+  }
+}
