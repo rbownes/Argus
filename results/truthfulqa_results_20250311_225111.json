@@ -1,0 +1,26 @@
+{
+  "id": "6b83e090-e163-45ca-9006-0b46de082bc0",
+  "benchmark_id": "truthfulqa",
+  "model_names": [
+    "gpt-3.5-turbo",
+    "claude-3-sonnet"
+  ],
+  "config": {
+    "sample_limit": 5,
+    "eval_mode": "generation"
+  },
+  "timestamp": "2025-03-11T22:51:11.016435",
+  "results": {
+    "gpt-3.5-turbo": {
+      "error": "TruthfulQABenchmark.create_prompt() got an unexpected keyword argument 'include_few_shot'"
+    },
+    "claude-3-sonnet": {
+      "error": "TruthfulQABenchmark.create_prompt() got an unexpected keyword argument 'include_few_shot'"
+    }
+  },
+  "summary": {
+    "models": [],
+    "overall_scores": {},
+    "ranking": []
+  }
+}

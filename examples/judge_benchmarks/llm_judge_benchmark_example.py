@@ -16,6 +16,7 @@ from llm_eval.core.models import EvaluationType
 from llm_eval.services.llm_service import LiteLLMService
 from llm_eval.services.evaluation_service import EvaluationService, LLMJudgeEvaluator
 from llm_eval.services.benchmark_service import BenchmarkService, BenchmarkConfig
+import litellm
 
 
 class BenchmarkJudgeDemo:
@@ -40,6 +41,9 @@ class BenchmarkJudgeDemo:
         
         # Create output directory if it doesn't exist
         os.makedirs(output_dir, exist_ok=True)
+        
+        # Enable LiteLLM debug mode
+        litellm._turn_on_debug()
         
         # Initialize services with LiteLLM
         self.llm_service = LiteLLMService()
@@ -67,7 +71,7 @@ class BenchmarkJudgeDemo:
         ]:
             judge_evaluator = LLMJudgeEvaluator(
                 llm_service=self.llm_service,
-                judge_model="gpt-4-turbo",  # Use your preferred judge model
+                judge_model="openai/gpt-4-turbo",  # Added openai/ prefix
                 evaluation_type=eval_type
             )
             
@@ -218,8 +222,8 @@ class BenchmarkJudgeDemo:
         for benchmark_id, details in benchmarks.items():
             print(f"- {benchmark_id}: {details['name']} - {details['description']}")
         
-        # Define models to evaluate
-        models = ["gpt-3.5-turbo", "claude-3-sonnet"]
+        # Define models to evaluate (with provider prefixes)
+        models = ["openai/gpt-3.5-turbo", "anthropic/claude-3-sonnet"]
         
         # Run MMLU benchmark with judge evaluation
         await self.run_benchmark_with_judge(
