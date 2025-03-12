@@ -1,0 +1,26 @@
+{
+  "id": "fd9c24c2-ec09-4553-aa02-ee66bf680bc1",
+  "benchmark_id": "truthfulqa",
+  "model_names": [
+    "openai/gpt-4o-mini-2024-07-18",
+    "anthropic/claude-3-sonnet"
+  ],
+  "config": {
+    "sample_limit": 5,
+    "eval_mode": "generation"
+  },
+  "timestamp": "2025-03-12T00:07:42.193439",
+  "results": {
+    "openai/gpt-4o-mini-2024-07-18": {
+      "error": "TruthfulQABenchmark.create_prompt() got an unexpected keyword argument 'include_few_shot'"
+    },
+    "anthropic/claude-3-sonnet": {
+      "error": "TruthfulQABenchmark.create_prompt() got an unexpected keyword argument 'include_few_shot'"
+    }
+  },
+  "summary": {
+    "models": [],
+    "overall_scores": {},
+    "ranking": []
+  }
+}

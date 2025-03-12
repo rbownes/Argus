@@ -42,9 +42,6 @@ class BenchmarkJudgeDemo:
         # Create output directory if it doesn't exist
         os.makedirs(output_dir, exist_ok=True)
         
-        # Enable LiteLLM debug mode
-        litellm._turn_on_debug()
-        
         # Initialize services with LiteLLM
         self.llm_service = LiteLLMService()
         self.evaluation_service = EvaluationService()
@@ -71,7 +68,7 @@ class BenchmarkJudgeDemo:
         ]:
             judge_evaluator = LLMJudgeEvaluator(
                 llm_service=self.llm_service,
-                judge_model="openai/gpt-4-turbo",  # Added openai/ prefix
+                judge_model="openai/gpt-4o-mini-2024-07-18",  # Using a valid OpenAI model
                 evaluation_type=eval_type
             )
             
@@ -130,6 +127,16 @@ class BenchmarkJudgeDemo:
             accuracy = result["metrics"].get("accuracy", 0.0)
             count = result["metrics"].get("sample_count", 0)
             print(f"{model_name}: Accuracy {accuracy:.2%} ({result['metrics'].get('correct_count', 0)}/{count})")
+            
+            # Print raw responses for debugging
+            print(f"\nRaw responses from {model_name}:")
+            for i, eval_result in enumerate(result.get("evaluations", [])):
+                print(f"\nQuestion {i+1}:")
+                print("Question:", eval_result.get("question", ""))
+                print("Expected answer:", eval_result.get("expected_answer", ""))
+                print("Response:", eval_result.get("response_text", ""))
+                print("Extracted answer:", eval_result.get("predicted_answer", ""))
+                print("Debug info:", eval_result.get("debug_info", {}))
         
         # For each model, judge responses from benchmark runs
         for model_name, result in comparison["results"].items():
@@ -184,12 +191,15 @@ class BenchmarkJudgeDemo:
                     print("\nSample evaluation:")
                     print(f"Score: {sample_eval.score:.2f}")
                     print(f"Explanation: {sample_eval.explanation}")
+                    print(f"\nRaw judge response:")
+                    print(sample_eval.metadata.get("raw_response", "No raw response available"))
                     
                     # Show criteria scores
                     if "criteria_scores" in sample_eval.metadata:
                         print("\nCriteria scores:")
                         for criterion, data in sample_eval.metadata["criteria_scores"].items():
-                            print(f"- {criterion}: {data['score']:.2f}")
+                            score = data.get("score", 0)  # Score is already normalized
+                            print(f"- {criterion}: {score:.2f}")
                     
                     # Show strengths and weaknesses
                     if "strengths" in sample_eval.metadata:
@@ -223,7 +233,7 @@ class BenchmarkJudgeDemo:
             print(f"- {benchmark_id}: {details['name']} - {details['description']}")
         
         # Define models to evaluate (with provider prefixes)
-        models = ["openai/gpt-3.5-turbo", "anthropic/claude-3-sonnet"]
+        models = ["openai/gpt-4o-mini-2024-07-18", "anthropic/claude-3-7-sonnet-20250219"]
         
         # Run MMLU benchmark with judge evaluation
         await self.run_benchmark_with_judge(

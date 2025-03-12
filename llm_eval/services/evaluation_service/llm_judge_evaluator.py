@@ -164,14 +164,22 @@ Ensure your evaluation is fair, thorough, and constructive. Only return the JSON
                 json_text = text.split("```")[1].split("```")[0].strip()
                 return json.loads(json_text)
             
+            # Try to find any JSON-like structure with curly braces
+            if "{" in text and "}" in text:
+                start = text.find("{")
+                end = text.rfind("}") + 1
+                json_text = text[start:end]
+                return json.loads(json_text)
+            
             # Try to parse the entire text as JSON
             return json.loads(text.strip())
         
-        except (json.JSONDecodeError, IndexError):
+        except (json.JSONDecodeError, IndexError) as e:
+            print(f"Failed to parse judge response: {str(e)}\nResponse text: {text[:200]}...")  # Add debug logging
             # If all else fails, return a default structure
             return {
                 "overall_score": 5.0,
-                "explanation": "Failed to parse judge response as JSON",
+                "explanation": f"Failed to parse judge response as JSON: {str(e)}",
                 "criteria": {criterion: {"score": 5.0, "reasoning": "Parse error"} for criterion in self._criteria}
             }
     
@@ -249,6 +257,7 @@ Ensure your evaluation is fair, thorough, and constructive. Only return the JSON
                 "strengths": strengths,
                 "weaknesses": weaknesses,
                 "improvement_suggestions": suggestions,
+                "raw_response": judge_response.response_text,
                 "judge_response_id": judge_response.id
             }
             

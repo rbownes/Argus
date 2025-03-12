@@ -1,0 +1,145 @@
+{
+  "id": "46c083df-c1c7-4889-9465-35266f0c87f7",
+  "benchmark_id": "gsm8k",
+  "model_names": [
+    "openai/gpt-3.5-turbo",
+    "anthropic/claude-3-sonnet"
+  ],
+  "config": {
+    "sample_limit": 3,
+    "include_few_shot": true
+  },
+  "timestamp": "2025-03-11T23:51:42.788712",
+  "results": {
+    "openai/gpt-3.5-turbo": {
+      "id": "7813ee07-acbf-491b-891d-e68c3067cb55",
+      "benchmark_id": "gsm8k",
+      "model_name": "openai/gpt-3.5-turbo",
+      "config": {
+        "sample_limit": 3,
+        "include_few_shot": true
+      },
+      "start_time": "2025-03-11T23:51:40.486551",
+      "end_time": "2025-03-11T23:51:42.333451",
+      "duration_seconds": 1.8469,
+      "sample_count": 3,
+      "evaluated_count": 3,
+      "metrics": {
+        "accuracy": 0.6666666666666666,
+        "sample_count": 3,
+        "correct_count": 2,
+        "avg_step_count": 5.0,
+        "difficulty_scores": {
+          "medium": {
+            "accuracy": 0.5,
+            "sample_count": 2,
+            "correct_count": 1
+          },
+          "hard": {
+            "accuracy": 1.0,
+            "sample_count": 1,
+            "correct_count": 1
+          }
+        },
+        "overall_score": 0.6666666666666666
+      },
+      "evaluations": [
+        {
+          "sample_id": "ca302d77-2dd1-425b-b0d9-a3cc11b92b1d",
+          "difficulty": "medium",
+          "correct": true,
+          "score": 1.0,
+          "expected_answer": "41",
+          "predicted_answer": "41",
+          "question": "Sam bought a dozen boxes of cookies, with 20 cookies in each box. After eating 35 cookies, he distributed the remaining cookies equally among 5 bags. How many cookies were in each bag?",
+          "step_count": 4,
+          "response_text": "Sam initially had 12 boxes of cookies, with 20 cookies in each box, which is a total of 12 * 20 = 240 cookies. After eating 35 cookies, he had 240 - 35 = 205 cookies left. He distributed these remaining cookies equally among 5 bags, so each bag had 205 / 5 = 41 cookies. Therefore, the answer is 41.",
+          "debug_info": {
+            "matched_pattern": "[Tt]he answer is[:\\s]*(\\d+)",
+            "answer_extraction_method": "pattern_match",
+            "steps_found": 4,
+            "response_length": 299,
+            "has_explicit_answer": true
+          }
+        },
+        {
+          "sample_id": "1ac57b19-e298-4a56-bc6e-d722d582e1c4",
+          "difficulty": "hard",
+          "correct": true,
+          "score": 1.0,
+          "expected_answer": "3",
+          "predicted_answer": "3",
+          "question": "Eliana has 5 oranges. She goes to the store to buy 3 more oranges and 2 apples. Then she shares the fruit equally between herself and her 2 friends. How many pieces of fruit does each person get?",
+          "step_count": 6,
+          "response_text": "Eliana starts with 5 oranges. She buys 3 more oranges and 2 apples, totaling 8 oranges and 2 apples, or 10 pieces of fruit. She shares this among herself and her 2 friends, for a total of 3 people. Each person gets 10 / 3 = 3 1/3 pieces of fruit. Since we can't divide individual pieces of fruit, each person actually gets 3 pieces of fruit, with 1 piece left over. Therefore, the answer is 3.",
+          "debug_info": {
+            "matched_pattern": "[Tt]he answer is[:\\s]*(\\d+)",
+            "answer_extraction_method": "pattern_match",
+            "steps_found": 6,
+            "response_length": 393,
+            "has_explicit_answer": true
+          }
+        },
+        {
+          "sample_id": "3dd5bdb5-3416-4253-851c-e95783ee5024",
+          "difficulty": "medium",
+          "correct": false,
+          "score": 0.0,
+          "expected_answer": "18",
+          "predicted_answer": "7",
+          "question": "Janet's ducks lay 16 eggs per day. She eats three for breakfast every morning and bakes muffins for her friends every day with four. She sells the remainder at the farmers' market daily for $2 per fresh duck egg. How much in dollars does she make every day at the farmers' market?",
+          "step_count": 5,
+          "response_text": "Janet's ducks lay 16 eggs per day. She eats 3 eggs for breakfast and uses 4 for muffins, so she eats 3 + 4 = 7 eggs each day. That leaves 16 - 7 = 9 eggs to sell. At $2 per egg, she makes 9 * $2 = $18 per day at the farmer's market. Therefore, the answer is $18.",
+          "debug_info": {
+            "matched_pattern": "= (\\d+)[\\.!\\s]",
+            "answer_extraction_method": "pattern_match",
+            "steps_found": 5,
+            "response_length": 262,
+            "has_explicit_answer": true
+          }
+        }
+      ]
+    },
+    "anthropic/claude-3-sonnet": {
+      "id": "716e351e-5bc0-496a-a460-841705b1d555",
+      "benchmark_id": "gsm8k",
+      "model_name": "anthropic/claude-3-sonnet",
+      "config": {
+        "sample_limit": 3,
+        "include_few_shot": true
+      },
+      "start_time": "2025-03-11T23:51:42.336943",
+      "end_time": "2025-03-11T23:51:42.788572",
+      "duration_seconds": 0.451629,
+      "sample_count": 3,
+      "evaluated_count": 0,
+      "metrics": {
+        "accuracy": 0.0,
+        "sample_count": 0,
+        "difficulty_scores": {},
+        "overall_score": 0.0
+      },
+      "evaluations": []
+    }
+  },
+  "summary": {
+    "models": [
+      "openai/gpt-3.5-turbo",
+      "anthropic/claude-3-sonnet"
+    ],
+    "overall_scores": {
+      "openai/gpt-3.5-turbo": 0.6666666666666666,
+      "anthropic/claude-3-sonnet": 0.0
+    },
+    "ranking": [
+      {
+        "model": "openai/gpt-3.5-turbo",
+        "score": 0.6666666666666666
+      },
+      {
+        "model": "anthropic/claude-3-sonnet",
+        "score": 0.0
+      }
+    ]
+  }
+}

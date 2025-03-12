@@ -1,0 +1,177 @@
+{
+  "id": "e1cd3154-ef2d-4df2-863b-995a6478ce61",
+  "benchmark_id": "mmlu",
+  "model_names": [
+    "openai/gpt-3.5-turbo",
+    "anthropic/claude-3-sonnet"
+  ],
+  "config": {
+    "sample_limit": 5,
+    "categories": [
+      "high_school_mathematics",
+      "philosophy"
+    ],
+    "shuffle": true
+  },
+  "timestamp": "2025-03-11T23:41:58.444855",
+  "results": {
+    "openai/gpt-3.5-turbo": {
+      "id": "086f15c5-4134-408a-9d1b-505179eabc3b",
+      "benchmark_id": "mmlu",
+      "model_name": "openai/gpt-3.5-turbo",
+      "config": {
+        "sample_limit": 5,
+        "categories": [
+          "high_school_mathematics",
+          "philosophy"
+        ],
+        "shuffle": true
+      },
+      "start_time": "2025-03-11T23:41:55.820927",
+      "end_time": "2025-03-11T23:41:57.616484",
+      "duration_seconds": 1.795557,
+      "sample_count": 5,
+      "evaluated_count": 5,
+      "metrics": {
+        "accuracy": 0.2,
+        "sample_count": 5,
+        "correct_count": 1,
+        "subject_scores": {
+          "high_school_mathematics": {
+            "accuracy": 0.2,
+            "sample_count": 5,
+            "correct_count": 1
+          }
+        },
+        "overall_score": 0.2
+      },
+      "evaluations": [
+        {
+          "sample_id": "4d88db69-7a8c-499d-8c19-ea726c05733d",
+          "subject": "high_school_mathematics",
+          "correct": false,
+          "score": 0.0,
+          "expected_answer": "A",
+          "predicted_answer": "C",
+          "question": "What is the slope of the line that passes through the points (2",
+          "options": [
+            " 3) and (6",
+            " 7)?",
+            "0.5",
+            "1"
+          ],
+          "response_text": "C. 0.5"
+        },
+        {
+          "sample_id": "645fc907-65f4-4539-9cbe-48b706843dbf",
+          "subject": "high_school_mathematics",
+          "correct": false,
+          "score": 0.0,
+          "expected_answer": "A",
+          "predicted_answer": "C",
+          "question": "If log\u2082x = 3",
+          "options": [
+            " then x = ?",
+            "6",
+            "8",
+            "9"
+          ],
+          "response_text": "C. 8"
+        },
+        {
+          "sample_id": "c0ab39f4-3eb0-4341-9d18-2b6094e18eff",
+          "subject": "high_school_mathematics",
+          "correct": false,
+          "score": 0.0,
+          "expected_answer": "A",
+          "predicted_answer": "D",
+          "question": "The quadratic equation x\u00b2 + bx + c = 0 has roots 3 and -5. What is the value of b?",
+          "options": [
+            "2",
+            "-2",
+            "8",
+            "-8"
+          ],
+          "response_text": "D. -8"
+        },
+        {
+          "sample_id": "d17877f9-4e52-4ffa-b1b3-91cb24bf5f54",
+          "subject": "high_school_mathematics",
+          "correct": true,
+          "score": 1.0,
+          "expected_answer": "C",
+          "predicted_answer": "C",
+          "question": "Solve for x: 2x\u00b2 - 5x - 3 = 0.",
+          "options": [
+            "x = -3/2 or x = 1",
+            "x = 3 or x = -1/2",
+            "x = 3/2 or x = -1",
+            "x = -3 or x = 1/2"
+          ],
+          "response_text": "C. x = 3/2 or x = -1"
+        },
+        {
+          "sample_id": "fad32709-0847-4066-b607-d6bce4632732",
+          "subject": "high_school_mathematics",
+          "correct": false,
+          "score": 0.0,
+          "expected_answer": "A",
+          "predicted_answer": "B",
+          "question": "Find the value of x if 3x + 4 = 19.",
+          "options": [
+            "5",
+            "8",
+            "15",
+            "3"
+          ],
+          "response_text": "B. 5"
+        }
+      ]
+    },
+    "anthropic/claude-3-sonnet": {
+      "id": "02265818-af9b-4902-9f8c-043a164b07d6",
+      "benchmark_id": "mmlu",
+      "model_name": "anthropic/claude-3-sonnet",
+      "config": {
+        "sample_limit": 5,
+        "categories": [
+          "high_school_mathematics",
+          "philosophy"
+        ],
+        "shuffle": true
+      },
+      "start_time": "2025-03-11T23:41:57.620209",
+      "end_time": "2025-03-11T23:41:58.444757",
+      "duration_seconds": 0.824548,
+      "sample_count": 5,
+      "evaluated_count": 0,
+      "metrics": {
+        "accuracy": 0.0,
+        "sample_count": 0,
+        "subject_scores": {},
+        "overall_score": 0.0
+      },
+      "evaluations": []
+    }
+  },
+  "summary": {
+    "models": [
+      "openai/gpt-3.5-turbo",
+      "anthropic/claude-3-sonnet"
+    ],
+    "overall_scores": {
+      "openai/gpt-3.5-turbo": 0.2,
+      "anthropic/claude-3-sonnet": 0.0
+    },
+    "ranking": [
+      {
+        "model": "openai/gpt-3.5-turbo",
+        "score": 0.2
+      },
+      {
+        "model": "anthropic/claude-3-sonnet",
+        "score": 0.0
+      }
+    ]
+  }
+}

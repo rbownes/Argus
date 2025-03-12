@@ -1,0 +1,124 @@
+{
+  "id": "684fe87d-0bbf-4eca-9f9c-93f339f26365",
+  "benchmark_id": "gsm8k",
+  "model_names": [
+    "openai/gpt-3.5-turbo",
+    "anthropic/claude-3-sonnet"
+  ],
+  "config": {
+    "sample_limit": 3,
+    "include_few_shot": true
+  },
+  "timestamp": "2025-03-11T23:42:31.462804",
+  "results": {
+    "openai/gpt-3.5-turbo": {
+      "id": "091cd751-5426-4c5a-afcf-a0ce5d2686a2",
+      "benchmark_id": "gsm8k",
+      "model_name": "openai/gpt-3.5-turbo",
+      "config": {
+        "sample_limit": 3,
+        "include_few_shot": true
+      },
+      "start_time": "2025-03-11T23:42:29.456792",
+      "end_time": "2025-03-11T23:42:31.013879",
+      "duration_seconds": 1.557087,
+      "sample_count": 3,
+      "evaluated_count": 3,
+      "metrics": {
+        "accuracy": 0.3333333333333333,
+        "sample_count": 3,
+        "correct_count": 1,
+        "avg_step_count": 6.0,
+        "difficulty_scores": {
+          "medium": {
+            "accuracy": 0.5,
+            "sample_count": 2,
+            "correct_count": 1
+          },
+          "hard": {
+            "accuracy": 0.0,
+            "sample_count": 1,
+            "correct_count": 0
+          }
+        },
+        "overall_score": 0.3333333333333333
+      },
+      "evaluations": [
+        {
+          "sample_id": "3ff84bd3-0d3b-4983-b51f-488ca8aa3d4b",
+          "difficulty": "medium",
+          "correct": false,
+          "score": 0.0,
+          "expected_answer": "18",
+          "predicted_answer": "7",
+          "question": "Janet's ducks lay 16 eggs per day. She eats three for breakfast every morning and bakes muffins for her friends every day with four. She sells the remainder at the farmers' market daily for $2 per fresh duck egg. How much in dollars does she make every day at the farmers' market?",
+          "step_count": 5,
+          "response_text": "Janet's ducks lay 16 eggs per day. She eats 3 eggs for breakfast and uses 4 for muffins, so she consumes 3 + 4 = 7 eggs each day. That leaves 16 - 7 = 9 eggs to sell. At $2 per egg, she makes 9 * $2 = $18 per day at the farmers' market. Therefore, Janet makes $18 every day at the farmers' market."
+        },
+        {
+          "sample_id": "d9b6f905-c769-49b1-b01a-13563f6699b2",
+          "difficulty": "hard",
+          "correct": false,
+          "score": 0.0,
+          "expected_answer": "3",
+          "predicted_answer": "8",
+          "question": "Eliana has 5 oranges. She goes to the store to buy 3 more oranges and 2 apples. Then she shares the fruit equally between herself and her 2 friends. How many pieces of fruit does each person get?",
+          "step_count": 8,
+          "response_text": "Eliana starts with 5 oranges. She buys 3 more oranges and 2 apples, so she now has a total of 5 + 3 = 8 oranges and 2 apples. This is a total of 8 + 2 = 10 pieces of fruit. \n\nShe wants to share this equally between herself and her 2 friends, which makes 3 people in total. So each person would ideally get 10 / 3 = 3.33 pieces of fruit. However, since we can't divide individual pieces of fruit, each person will get 3 pieces of fruit, with 1 piece left over.\n\nTherefore, each person will get 3 pieces of fruit."
+        },
+        {
+          "sample_id": "d1610699-54f7-4799-87d2-638c8a0b9db3",
+          "difficulty": "medium",
+          "correct": true,
+          "score": 1.0,
+          "expected_answer": "41",
+          "predicted_answer": "41",
+          "question": "Sam bought a dozen boxes of cookies, with 20 cookies in each box. After eating 35 cookies, he distributed the remaining cookies equally among 5 bags. How many cookies were in each bag?",
+          "step_count": 5,
+          "response_text": "Sam bought 12 boxes of cookies, with 20 cookies in each box. So he had 12 * 20 = 240 cookies initially. After eating 35 cookies, he had 240 - 35 = 205 cookies left. He put these cookies in 5 equal bags, so each bag had 205 / 5 = 41 cookies. The answer is 41."
+        }
+      ]
+    },
+    "anthropic/claude-3-sonnet": {
+      "id": "e89b5ebc-b807-42b1-8483-95df2ebb9ce0",
+      "benchmark_id": "gsm8k",
+      "model_name": "anthropic/claude-3-sonnet",
+      "config": {
+        "sample_limit": 3,
+        "include_few_shot": true
+      },
+      "start_time": "2025-03-11T23:42:31.016573",
+      "end_time": "2025-03-11T23:42:31.462729",
+      "duration_seconds": 0.446156,
+      "sample_count": 3,
+      "evaluated_count": 0,
+      "metrics": {
+        "accuracy": 0.0,
+        "sample_count": 0,
+        "difficulty_scores": {},
+        "overall_score": 0.0
+      },
+      "evaluations": []
+    }
+  },
+  "summary": {
+    "models": [
+      "openai/gpt-3.5-turbo",
+      "anthropic/claude-3-sonnet"
+    ],
+    "overall_scores": {
+      "openai/gpt-3.5-turbo": 0.3333333333333333,
+      "anthropic/claude-3-sonnet": 0.0
+    },
+    "ranking": [
+      {
+        "model": "openai/gpt-3.5-turbo",
+        "score": 0.3333333333333333
+      },
+      {
+        "model": "anthropic/claude-3-sonnet",
+        "score": 0.0
+      }
+    ]
+  }
+}

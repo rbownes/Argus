@@ -186,7 +186,7 @@ class GSM8KBenchmark(BaseBenchmark[GSM8KSample]):
             Result containing a prompt object.
         """
         try:
-            prompt_text = "Solve the following math problem step by step:\n\n"
+            prompt_text = "Solve the following math problem step by step. After showing your work, conclude with 'Therefore, the answer is X' where X is your final numeric answer:\n\n"
             
             # Add few-shot examples if requested
             if include_few_shot and self.few_shot_examples > 0:
@@ -242,29 +242,58 @@ class GSM8KBenchmark(BaseBenchmark[GSM8KSample]):
         try:
             # Look for explicit answer formatting like "The answer is X" or "Therefore, X is the answer"
             answer_patterns = [
-                r"The answer is[:\s]*(\d+)",
-                r"Therefore,? (?:the answer is )?(\d+)",
-                r"Thus,? (?:the answer is )?(\d+)",
-                r"So,? (?:the answer is )?(\d+)",
-                r"Hence,? (?:the answer is )?(\d+)",
+                r"[Tt]he answer is[:\s]*(\d+)",
+                r"[Tt]herefore,? (?:the answer is )?(\d+)",
+                r"[Tt]hus,? (?:the answer is )?(\d+)",
+                r"[Ss]o,? (?:the answer is )?(\d+)",
+                r"[Hh]ence,? (?:the answer is )?(\d+)",
                 r"= (\d+)$",
-                r"= (\d+)[\.!\s]"
+                r"= (\d+)[\.!\s]",
+                r"(\d+) is the (?:final )?answer",
+                r"(?:final )?answer:? (\d+)",
+                # Add more patterns for Claude's potential formats
+                r"(?:final|correct|total) (?:result|number|value|amount) is (\d+)",
+                r"(?:result|number|value|amount):? (\d+)",
+                r"(?:equals|equal to|comes to) (\d+)",
+                r"(?:we get|we have|gives us|gives) (\d+)",
+                r"(?:solution|answer) is (\d+)",
+                r"(?:final|last) step:? .*?(\d+)",
+                r"(?:in total|total|altogether):? (\d+)"
             ]
             
             predicted_answer = None
+            matched_pattern = None
+            
+            # Try each pattern until we find a match
             for pattern in answer_patterns:
-                match = re.search(pattern, response_text, re.IGNORECASE)
+                match = re.search(pattern, response_text, re.IGNORECASE | re.MULTILINE)
                 if match:
                     predicted_answer = match.group(1)
+                    matched_pattern = pattern
                     break
             
-            # If no explicit answer format found, look for the last number in the response
+            # If no explicit answer format found, try to find a number near conclusion words
+            if not predicted_answer:
+                conclusion_patterns = [
+                    r"(?:therefore|thus|hence|so|finally|in conclusion|to conclude|this means|this gives us).*?(\d+)",
+                    r"(?:final|last|end|ultimate).*?(\d+)"
+                ]
+                for pattern in conclusion_patterns:
+                    match = re.search(pattern, response_text, re.IGNORECASE | re.MULTILINE)
+                    if match:
+                        predicted_answer = match.group(1)
+                        matched_pattern = "conclusion_number"
+                        break
+            
+            # If still no match, look for the last number in the response
             if not predicted_answer:
                 numbers = re.findall(r'(\d+)', response_text)
                 if numbers:
                     predicted_answer = numbers[-1]
+                    matched_pattern = "last_number"
                 else:
                     predicted_answer = "0"  # Default if no numbers found
+                    matched_pattern = "no_numbers"
             
             # Remove commas and whitespace from answers for comparison
             expected_answer_clean = re.sub(r'[,\s]', '', sample["answer"])
@@ -277,7 +306,7 @@ class GSM8KBenchmark(BaseBenchmark[GSM8KSample]):
             steps = re.split(r'[\.\n]', response_text)
             steps = [s.strip() for s in steps if s.strip()]
             
-            # Create the evaluation result
+            # Create the evaluation result with detailed logging
             evaluation = {
                 "sample_id": sample["id"],
                 "difficulty": sample["difficulty"],
@@ -287,7 +316,14 @@ class GSM8KBenchmark(BaseBenchmark[GSM8KSample]):
                 "predicted_answer": predicted_answer,
                 "question": sample["question"],
                 "step_count": len(steps),
-                "response_text": response_text
+                "response_text": response_text,
+                "debug_info": {
+                    "matched_pattern": matched_pattern,
+                    "answer_extraction_method": "pattern_match" if matched_pattern not in ["last_number", "no_numbers", "conclusion_number"] else matched_pattern,
+                    "steps_found": len(steps),
+                    "response_length": len(response_text),
+                    "has_explicit_answer": matched_pattern not in ["last_number", "no_numbers", "conclusion_number"]
+                }
             }
             
             return Result.ok(evaluation)
