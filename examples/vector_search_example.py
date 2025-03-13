@@ -53,7 +53,7 @@ async def main():
     response1_gpt = LLMResponse(
         prompt_id=stored_prompt1.id,
         prompt_text=stored_prompt1.text,
-        model_name="gpt-3.5-turbo",
+        model_name="gpt-4-0125-preview",
         provider=LLMProvider.OPENAI,
         response_text="Quantum computing uses quantum bits or qubits to perform calculations. "
                      "Unlike regular bits that are either 0 or 1, qubits can exist in a superposition "
@@ -64,7 +64,7 @@ async def main():
     response1_claude = LLMResponse(
         prompt_id=stored_prompt1.id,
         prompt_text=stored_prompt1.text,
-        model_name="claude-3-opus",
+        model_name="claude-3-7-sonnet-20250219",
         provider=LLMProvider.ANTHROPIC,
         response_text="Imagine regular computers as working with coins that are either heads or tails. "
                      "Quantum computers use special 'quantum coins' that can be heads, tails, or spinning "
@@ -75,7 +75,7 @@ async def main():
     response2_gpt = LLMResponse(
         prompt_id=stored_prompt2.id,
         prompt_text=stored_prompt2.text,
-        model_name="gpt-3.5-turbo",
+        model_name="gpt-4-0125-preview",
         provider=LLMProvider.OPENAI,
         response_text="AI raises ethical concerns like privacy, bias, job displacement, and autonomous "
                      "decision-making. We need responsible development practices, transparency, and "
@@ -120,7 +120,7 @@ async def main():
     print("\n3. Comparing model responses semantically:")
     comparison = await storage.compare_responses_semantically(
         prompt_id=stored_prompt1.id,
-        model_names=["gpt-3.5-turbo", "claude-3-opus"]
+        model_names=["gpt-4-0125-preview", "claude-3-7-sonnet-20250219"]
     )
     
     if comparison.is_ok:

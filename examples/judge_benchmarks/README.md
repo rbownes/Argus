@@ -29,7 +29,7 @@ llm_service = LiteLLMService()
 # Create the LLM-as-Judge evaluator
 judge_evaluator = LLMJudgeEvaluator(
     llm_service=llm_service,
-    judge_model="gpt-4-turbo",
+    judge_model="gpt-4-0125-preview",
     evaluation_type=EvaluationType.QUALITY,
     temperature=0.1
 )
@@ -78,7 +78,7 @@ benchmark_service = BenchmarkService(llm_service=llm_service)
 # Run a benchmark on a single model
 result = await benchmark_service.run_benchmark(
     benchmark_id="mmlu",
-    model_name="gpt-3.5-turbo",
+    model_name="gpt-4-0125-preview",
     config={
         "sample_limit": 20,
         "categories": ["high_school_mathematics", "philosophy"],
@@ -89,7 +89,7 @@ result = await benchmark_service.run_benchmark(
 # Compare multiple models
 comparison = await benchmark_service.run_benchmark_comparison(
     benchmark_id="truthfulqa",
-    model_names=["gpt-3.5-turbo", "claude-3-opus"],
+    model_names=["gpt-4-0125-preview", "claude-3-7-sonnet-20250219"],
     config={"eval_mode": "generation"}
 )
 ```
@@ -135,7 +135,7 @@ custom_criteria = [
 
 judge_evaluator = LLMJudgeEvaluator(
     llm_service=llm_service,
-    judge_model="claude-3-opus",
+    judge_model="claude-3-7-sonnet-20250219",
     evaluation_type=EvaluationType.QUALITY,
     criteria=custom_criteria
 )

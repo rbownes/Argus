@@ -2,8 +2,8 @@
   "id": "684fe87d-0bbf-4eca-9f9c-93f339f26365",
   "benchmark_id": "gsm8k",
   "model_names": [
-    "openai/gpt-3.5-turbo",
-    "anthropic/claude-3-sonnet"
+    "openai/gpt-4-0125-preview",
+    "anthropic/claude-3-7-sonnet-20250219"
   ],
   "config": {
     "sample_limit": 3,
@@ -11,10 +11,10 @@
   },
   "timestamp": "2025-03-11T23:42:31.462804",
   "results": {
-    "openai/gpt-3.5-turbo": {
+    "openai/gpt-4-0125-preview": {
       "id": "091cd751-5426-4c5a-afcf-a0ce5d2686a2",
       "benchmark_id": "gsm8k",
-      "model_name": "openai/gpt-3.5-turbo",
+      "model_name": "openai/gpt-4-0125-preview",
       "config": {
         "sample_limit": 3,
         "include_few_shot": true
@@ -79,10 +79,10 @@
         }
       ]
     },
-    "anthropic/claude-3-sonnet": {
+    "anthropic/claude-3-7-sonnet-20250219": {
       "id": "e89b5ebc-b807-42b1-8483-95df2ebb9ce0",
       "benchmark_id": "gsm8k",
-      "model_name": "anthropic/claude-3-sonnet",
+      "model_name": "anthropic/claude-3-7-sonnet-20250219",
       "config": {
         "sample_limit": 3,
         "include_few_shot": true
@@ -103,20 +103,20 @@
   },
   "summary": {
     "models": [
-      "openai/gpt-3.5-turbo",
-      "anthropic/claude-3-sonnet"
+      "openai/gpt-4-0125-preview",
+      "anthropic/claude-3-7-sonnet-20250219"
     ],
     "overall_scores": {
-      "openai/gpt-3.5-turbo": 0.3333333333333333,
-      "anthropic/claude-3-sonnet": 0.0
+      "openai/gpt-4-0125-preview": 0.3333333333333333,
+      "anthropic/claude-3-7-sonnet-20250219": 0.0
     },
     "ranking": [
       {
-        "model": "openai/gpt-3.5-turbo",
+        "model": "openai/gpt-4-0125-preview",
         "score": 0.3333333333333333
       },
       {
-        "model": "anthropic/claude-3-sonnet",
+        "model": "anthropic/claude-3-7-sonnet-20250219",
         "score": 0.0
       }
     ]

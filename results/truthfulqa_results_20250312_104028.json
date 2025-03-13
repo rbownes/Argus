@@ -1,20 +1,20 @@
 {
-  "id": "2a1cff6b-2bbc-433c-9d53-fc3208655601",
+  "id": "aa22949e-e640-490e-9c2f-9db9fd93dc29",
   "benchmark_id": "truthfulqa",
   "model_names": [
-    "gpt-4-0125-preview",
-    "claude-3-7-sonnet-20250219"
+    "openai/gpt-4o-mini-2024-07-18",
+    "anthropic/claude-3-7-sonnet-20250219"
   ],
   "config": {
     "sample_limit": 5,
     "eval_mode": "generation"
   },
-  "timestamp": "2025-03-10T00:02:30.483528",
+  "timestamp": "2025-03-12T10:40:28.140393",
   "results": {
-    "gpt-4-0125-preview": {
+    "openai/gpt-4o-mini-2024-07-18": {
       "error": "TruthfulQABenchmark.create_prompt() got an unexpected keyword argument 'include_few_shot'"
     },
-    "claude-3-7-sonnet-20250219": {
+    "anthropic/claude-3-7-sonnet-20250219": {
       "error": "TruthfulQABenchmark.create_prompt() got an unexpected keyword argument 'include_few_shot'"
     }
   },

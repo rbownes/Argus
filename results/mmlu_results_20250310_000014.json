@@ -2,8 +2,8 @@
   "id": "964c1ad9-993e-447c-9736-6bff0d282492",
   "benchmark_id": "mmlu",
   "model_names": [
-    "gpt-3.5-turbo",
-    "claude-3-sonnet"
+    "gpt-4-0125-preview",
+    "claude-3-7-sonnet-20250219"
   ],
   "config": {
     "sample_limit": 5,
@@ -15,10 +15,10 @@
   },
   "timestamp": "2025-03-10T00:00:14.130526",
   "results": {
-    "gpt-3.5-turbo": {
+    "gpt-4-0125-preview": {
       "error": "ord() expected a character, but string of length 2 found"
     },
-    "claude-3-sonnet": {
+    "claude-3-7-sonnet-20250219": {
       "error": "ord() expected a character, but string of length 2 found"
     }
   },

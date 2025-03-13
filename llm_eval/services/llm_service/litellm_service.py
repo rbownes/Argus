@@ -173,7 +173,7 @@ class LiteLLMService(LLMServiceInterface):
             
             available_models = [
                 {
-                    "name": "gpt-3.5-turbo",
+                    "name": "gpt-4-0125-preview",
                     "provider": LLMProvider.OPENAI,
                     "description": "GPT-3.5 Turbo by OpenAI",
                     "supported": "openai_api_key" in self.api_keys

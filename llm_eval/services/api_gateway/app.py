@@ -74,7 +74,7 @@ async def init_services():
         # Register LLM-as-Judge evaluator
         judge_evaluator = LLMJudgeEvaluator(
             llm_service=llm_service,
-            judge_model="gpt-4-turbo",  # Change as needed
+            judge_model="gpt-4-0125-preview",  # Change as needed
             evaluation_type=EvaluationType.QUALITY
         )
         await evaluation_service.register_evaluator(judge_evaluator)

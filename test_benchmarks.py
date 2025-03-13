@@ -23,7 +23,7 @@ async def main():
     # Register LLM-as-Judge evaluator
     judge_evaluator = LLMJudgeEvaluator(
         llm_service=llm_service,
-        judge_model="gpt-4-turbo",
+        judge_model="gpt-4-0125-preview",
         evaluation_type=EvaluationType.QUALITY
     )
     await evaluation_service.register_evaluator(judge_evaluator)
@@ -55,10 +55,10 @@ async def main():
         print(f"  Categories: {len(details['categories'])} categories")
     
     # Run a sample benchmark
-    print("\nRunning MMLU benchmark on gpt-3.5-turbo...")
+    print("\nRunning MMLU benchmark on gpt-4-0125-preview...")
     result = await benchmark_service.run_benchmark(
         benchmark_id="mmlu",
-        model_name="gpt-3.5-turbo",
+        model_name="gpt-4-0125-preview",
         config={
             "sample_limit": 3,  # Small limit for quick testing
             "categories": ["philosophy"],

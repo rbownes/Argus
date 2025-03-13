@@ -2,8 +2,8 @@
   "id": "0a501898-1e2d-4d04-bb46-b5e2d7c5a85f",
   "benchmark_id": "mmlu",
   "model_names": [
-    "gpt-3.5-turbo",
-    "claude-3-sonnet"
+    "gpt-4-0125-preview",
+    "claude-3-7-sonnet-20250219"
   ],
   "config": {
     "sample_limit": 5,
@@ -15,10 +15,10 @@
   },
   "timestamp": "2025-03-11T22:50:32.595507",
   "results": {
-    "gpt-3.5-turbo": {
+    "gpt-4-0125-preview": {
       "id": "278e79f3-c965-4305-9ce4-e5cc7c95ca52",
       "benchmark_id": "mmlu",
-      "model_name": "gpt-3.5-turbo",
+      "model_name": "gpt-4-0125-preview",
       "config": {
         "sample_limit": 5,
         "categories": [
@@ -128,10 +128,10 @@
         }
       ]
     },
-    "claude-3-sonnet": {
+    "claude-3-7-sonnet-20250219": {
       "id": "6848d980-3d48-4ac3-ad43-54600fefe7b1",
       "benchmark_id": "mmlu",
-      "model_name": "claude-3-sonnet",
+      "model_name": "claude-3-7-sonnet-20250219",
       "config": {
         "sample_limit": 5,
         "categories": [
@@ -156,20 +156,20 @@
   },
   "summary": {
     "models": [
-      "gpt-3.5-turbo",
-      "claude-3-sonnet"
+      "gpt-4-0125-preview",
+      "claude-3-7-sonnet-20250219"
     ],
     "overall_scores": {
-      "gpt-3.5-turbo": 0.0,
-      "claude-3-sonnet": 0.0
+      "gpt-4-0125-preview": 0.0,
+      "claude-3-7-sonnet-20250219": 0.0
     },
     "ranking": [
       {
-        "model": "gpt-3.5-turbo",
+        "model": "gpt-4-0125-preview",
         "score": 0.0
       },
       {
-        "model": "claude-3-sonnet",
+        "model": "claude-3-7-sonnet-20250219",
         "score": 0.0
       }
     ]

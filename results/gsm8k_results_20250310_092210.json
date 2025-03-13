@@ -2,8 +2,8 @@
   "id": "1b8fb857-d4dd-4648-895e-662509f15132",
   "benchmark_id": "gsm8k",
   "model_names": [
-    "gpt-3.5-turbo",
-    "claude-3-sonnet"
+    "gpt-4-0125-preview",
+    "claude-3-7-sonnet-20250219"
   ],
   "config": {
     "sample_limit": 3,
@@ -11,10 +11,10 @@
   },
   "timestamp": "2025-03-10T09:21:55.984350",
   "results": {
-    "gpt-3.5-turbo": {
+    "gpt-4-0125-preview": {
       "id": "105ae981-8904-4f1f-9d02-0334233add54",
       "benchmark_id": "gsm8k",
-      "model_name": "gpt-3.5-turbo",
+      "model_name": "gpt-4-0125-preview",
       "config": {
         "sample_limit": 3,
         "include_few_shot": true
@@ -79,10 +79,10 @@
         }
       ]
     },
-    "claude-3-sonnet": {
+    "claude-3-7-sonnet-20250219": {
       "id": "eafb2928-bec3-466f-8793-223804b2ec88",
       "benchmark_id": "gsm8k",
-      "model_name": "claude-3-sonnet",
+      "model_name": "claude-3-7-sonnet-20250219",
       "config": {
         "sample_limit": 3,
         "include_few_shot": true
@@ -103,20 +103,20 @@
   },
   "summary": {
     "models": [
-      "gpt-3.5-turbo",
-      "claude-3-sonnet"
+      "gpt-4-0125-preview",
+      "claude-3-7-sonnet-20250219"
     ],
     "overall_scores": {
-      "gpt-3.5-turbo": 0.3333333333333333,
-      "claude-3-sonnet": 0.0
+      "gpt-4-0125-preview": 0.3333333333333333,
+      "claude-3-7-sonnet-20250219": 0.0
     },
     "ranking": [
       {
-        "model": "gpt-3.5-turbo",
+        "model": "gpt-4-0125-preview",
         "score": 0.3333333333333333
       },
       {
-        "model": "claude-3-sonnet",
+        "model": "claude-3-7-sonnet-20250219",
         "score": 0.0
       }
     ]

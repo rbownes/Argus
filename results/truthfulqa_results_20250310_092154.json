@@ -2,8 +2,8 @@
   "id": "8ecb74e1-6da5-4fae-afe1-c4ca698f0b2d",
   "benchmark_id": "truthfulqa",
   "model_names": [
-    "gpt-3.5-turbo",
-    "claude-3-sonnet"
+    "gpt-4-0125-preview",
+    "claude-3-7-sonnet-20250219"
   ],
   "config": {
     "sample_limit": 5,
@@ -11,10 +11,10 @@
   },
   "timestamp": "2025-03-10T09:21:54.313389",
   "results": {
-    "gpt-3.5-turbo": {
+    "gpt-4-0125-preview": {
       "error": "TruthfulQABenchmark.create_prompt() got an unexpected keyword argument 'include_few_shot'"
     },
-    "claude-3-sonnet": {
+    "claude-3-7-sonnet-20250219": {
       "error": "TruthfulQABenchmark.create_prompt() got an unexpected keyword argument 'include_few_shot'"
     }
   },

@@ -59,11 +59,11 @@ class LLMJudgeEvaluator(EvaluatorInterface):
         """Get default criteria based on evaluation type."""
         criteria_map = {
             EvaluationType.QUALITY: [
-                "Relevance to the prompt",
-                "Completeness of the answer",
-                "Accuracy of information",
-                "Clarity and coherence",
-                "Overall helpfulness"
+                "relevance",
+                "completeness",
+                "accuracy",
+                "clarity",
+                "helpfulness"
             ],
             EvaluationType.FACTUALITY: [
                 "Factual accuracy",
@@ -102,7 +102,7 @@ class LLMJudgeEvaluator(EvaluatorInterface):
             ],
         }
         
-        return criteria_map.get(eval_type, ["Quality", "Helpfulness", "Relevance"])
+        return criteria_map.get(eval_type, ["quality", "helpfulness", "relevance"])
     
     def _get_default_prompt_template(self) -> str:
         """Get the default prompt template for the judge."""
@@ -138,8 +138,16 @@ Provide your evaluation in the following JSON format:
 Ensure your evaluation is fair, thorough, and constructive. Only return the JSON object without any additional text."""
     
     def _format_criteria_for_prompt(self, criteria: List[str]) -> str:
-        """Format criteria as a bulleted list for the prompt."""
-        return "\n".join([f"- {criterion}" for criterion in criteria])
+        """Format criteria as a bulleted list for the prompt with full descriptions."""
+        # Map short criteria names to full descriptions for the prompt
+        criteria_descriptions = {
+            "relevance": "Relevance to the prompt",
+            "completeness": "Completeness of the answer",
+            "accuracy": "Accuracy of information",
+            "clarity": "Clarity and coherence",
+            "helpfulness": "Overall helpfulness"
+        }
+        return "\n".join([f"- {criteria_descriptions.get(c, c)}" for c in criteria])
     
     def _prepare_judge_prompt(self, prompt_text: str, response_text: str) -> str:
         """Prepare the prompt for the judge LLM."""
@@ -154,39 +162,105 @@ Ensure your evaluation is fair, thorough, and constructive. Only return the JSON
     def _extract_json_from_response(self, text: str) -> Dict[str, Any]:
         """Extract JSON from the judge's response."""
         try:
+            parsed = None
+            debug_info = {"found_in": None, "raw_text": text[:200]}
+            
             # Try to find JSON block in markdown format
             if "```json" in text and "```" in text.split("```json")[1]:
                 json_text = text.split("```json")[1].split("```")[0].strip()
-                return json.loads(json_text)
+                try:
+                    parsed = json.loads(json_text)
+                    debug_info["found_in"] = "json_block"
+                    debug_info["extracted"] = json_text[:200]
+                except json.JSONDecodeError:
+                    pass
             
             # Try to find JSON block with just triple backticks
-            if "```" in text and "```" in text.split("```")[1]:
+            if not parsed and "```" in text and "```" in text.split("```")[1]:
                 json_text = text.split("```")[1].split("```")[0].strip()
-                return json.loads(json_text)
+                try:
+                    parsed = json.loads(json_text)
+                    debug_info["found_in"] = "triple_backticks"
+                    debug_info["extracted"] = json_text[:200]
+                except json.JSONDecodeError:
+                    pass
             
             # Try to find any JSON-like structure with curly braces
-            if "{" in text and "}" in text:
+            if not parsed and "{" in text and "}" in text:
                 start = text.find("{")
                 end = text.rfind("}") + 1
                 json_text = text[start:end]
-                return json.loads(json_text)
+                try:
+                    parsed = json.loads(json_text)
+                    debug_info["found_in"] = "curly_braces"
+                    debug_info["extracted"] = json_text[:200]
+                except json.JSONDecodeError:
+                    pass
             
             # Try to parse the entire text as JSON
-            return json.loads(text.strip())
-        
+            if not parsed:
+                try:
+                    parsed = json.loads(text.strip())
+                    debug_info["found_in"] = "full_text"
+                    debug_info["extracted"] = text[:200]
+                except json.JSONDecodeError:
+                    pass
+            
+            if parsed:
+                print("\nSuccessfully parsed JSON:")
+                print(f"Found in: {debug_info['found_in']}")
+                print(f"First 200 chars of extracted text: {debug_info['extracted']}")
+                print(f"Parsed structure keys: {list(parsed.keys())}")
+                if "criteria" in parsed:
+                    print(f"Criteria keys: {list(parsed['criteria'].keys())}")
+                print(f"Overall score: {parsed.get('overall_score')}")
+                return parsed
+            
+            raise json.JSONDecodeError("Failed to parse JSON in any format", text, 0)
+            
         except (json.JSONDecodeError, IndexError) as e:
-            print(f"Failed to parse judge response: {str(e)}\nResponse text: {text[:200]}...")  # Add debug logging
-            # If all else fails, return a default structure
+            print("\nJSON Parsing Debug Info:")
+            print(f"Error type: {type(e).__name__}")
+            print(f"Error message: {str(e)}")
+            print(f"First 200 chars of response: {text[:200]}")
+            if "debug_info" in locals():
+                print(f"Debug info: {debug_info}")
+            
+            # Return scores that are already normalized (0.5 = middle of 0-1 scale)
             return {
-                "overall_score": 5.0,
+                "overall_score": 0.5,
                 "explanation": f"Failed to parse judge response as JSON: {str(e)}",
-                "criteria": {criterion: {"score": 5.0, "reasoning": "Parse error"} for criterion in self._criteria}
+                "criteria": {criterion: {"score": 0.5, "reasoning": "Parse error"} for criterion in self._criteria}
             }
     
     def _normalize_score(self, score: Union[int, float]) -> float:
         """Normalize score from 0-10 scale to 0-1 scale."""
-        # Convert to float, ensure it's in 0-10 range, then scale to 0-1
-        return max(0.0, min(float(score), 10.0)) / 10.0
+        try:
+            score_float = float(score)
+            normalized = max(0.0, min(score_float, 10.0)) / 10.0
+            print(f"\nScore normalization: {score} -> {normalized}")
+            return normalized
+        except (TypeError, ValueError) as e:
+            print(f"\nScore normalization error: {str(e)}")
+            return 0.5
+    
+    def _get_criterion_score(self, evaluation_data: Dict[str, Any], criterion: str) -> tuple[float, str]:
+        """Get the score and reasoning for a criterion, handling various formats."""
+        criteria_data = evaluation_data.get("criteria", {})
+        
+        # Try exact match first
+        if criterion in criteria_data:
+            data = criteria_data[criterion]
+            return data.get("score", 5.0), data.get("reasoning", "")
+            
+        # Try case-insensitive match
+        criterion_lower = criterion.lower()
+        for key, data in criteria_data.items():
+            if key.lower() == criterion_lower:
+                return data.get("score", 5.0), data.get("reasoning", "")
+                
+        # If no match found, return default values
+        return 5.0, "No matching criterion found"
     
     async def evaluate(
         self, 
@@ -229,18 +303,30 @@ Ensure your evaluation is fair, thorough, and constructive. Only return the JSON
             
             judge_response = judge_result.unwrap()
             
+            print("\nJudge Response Debug:")
+            print(f"Response length: {len(judge_response.response_text)}")
+            print(f"First 200 chars: {judge_response.response_text[:200]}")
+            
             # Extract and parse the JSON evaluation
             evaluation_data = self._extract_json_from_response(judge_response.response_text)
             
+            print("\nParsed Evaluation Data:")
+            print(f"Keys in evaluation_data: {list(evaluation_data.keys())}")
+            
             # Get the overall score and normalize it
-            overall_score = self._normalize_score(evaluation_data.get("overall_score", 5.0))
+            overall_score = evaluation_data.get("overall_score", 5.0)
+            print(f"\nRaw overall score: {overall_score}")
+            overall_score = self._normalize_score(overall_score)
+            print(f"Normalized overall score: {overall_score}")
             
             # Create the evaluation result
             criteria_scores = {}
             for criterion in self._criteria:
-                criterion_data = evaluation_data.get("criteria", {}).get(criterion, {})
-                norm_score = self._normalize_score(criterion_data.get("score", 5.0))
-                reasoning = criterion_data.get("reasoning", "")
+                raw_score, reasoning = self._get_criterion_score(evaluation_data, criterion)
+                print(f"\nCriterion: {criterion}")
+                print(f"Raw score: {raw_score}")
+                norm_score = self._normalize_score(raw_score)
+                print(f"Normalized score: {norm_score}")
                 criteria_scores[criterion] = {
                     "score": norm_score,
                     "reasoning": reasoning

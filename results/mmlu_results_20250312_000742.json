@@ -3,7 +3,7 @@
   "benchmark_id": "mmlu",
   "model_names": [
     "openai/gpt-4o-mini-2024-07-18",
-    "anthropic/claude-3-sonnet"
+    "anthropic/claude-3-7-sonnet-20250219"
   ],
   "config": {
     "sample_limit": 5,
@@ -128,10 +128,10 @@
         }
       ]
     },
-    "anthropic/claude-3-sonnet": {
+    "anthropic/claude-3-7-sonnet-20250219": {
       "id": "bfd8b87e-216d-48c5-b38a-5812ae7af97e",
       "benchmark_id": "mmlu",
-      "model_name": "anthropic/claude-3-sonnet",
+      "model_name": "anthropic/claude-3-7-sonnet-20250219",
       "config": {
         "sample_limit": 5,
         "categories": [
@@ -157,11 +157,11 @@
   "summary": {
     "models": [
       "openai/gpt-4o-mini-2024-07-18",
-      "anthropic/claude-3-sonnet"
+      "anthropic/claude-3-7-sonnet-20250219"
     ],
     "overall_scores": {
       "openai/gpt-4o-mini-2024-07-18": 0.4,
-      "anthropic/claude-3-sonnet": 0.0
+      "anthropic/claude-3-7-sonnet-20250219": 0.0
     },
     "ranking": [
       {
@@ -169,7 +169,7 @@
         "score": 0.4
       },
       {
-        "model": "anthropic/claude-3-sonnet",
+        "model": "anthropic/claude-3-7-sonnet-20250219",
         "score": 0.0
       }
     ]
