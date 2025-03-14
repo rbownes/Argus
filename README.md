@@ -1,293 +1,220 @@
-# LLM Evaluation Framework
+# LLM Evaluation System
 
-A modular, extensible microservices-based framework for evaluating and comparing large language models across various dimensions.
+A comprehensive system for evaluating, tracking, and visualizing LLM model performance over time.
 
 ## Overview
 
-This framework enables systematic evaluation of LLMs by:
+This system enables ML Engineers and researchers to:
 
-- Managing test prompts across diverse categories
-- Interfacing with multiple LLM providers
-- Running configurable evaluations on responses
-- Storing results and embeddings for analysis
-- Visualizing performance metrics and comparisons
+- Evaluate any LiteLLM-compatible model with a single API call
+- Run tests across diverse thematic categories
+- Store responses in a vector database with rich metadata
+- Track and compare model performance over time
+- Visualize performance trends through API endpoints
+- Extend the system with custom evaluation metrics
+- Scale to handle parallel evaluations across multiple models
 
 ## Architecture
 
-The system consists of several independent microservices:
+The system follows a modular, microservices-oriented architecture with the following components:
 
-- **Prompt Service**: Manages test prompts, categories, and tags
-- **LLM Query Service**: Interfaces with multiple LLM providers
-- **Evaluation Service**: Runs configurable evaluations on responses
-- **Storage Service**: Persists data in PostgreSQL and ChromaDB
-- **API Gateway**: Coordinates service communication
-- **Visualization**: Grafana dashboards and Streamlit app
+```
+┌─────────────────────────┐
+│                         │
+│    FastAPI API Layer    │
+│                         │
+└───────────┬─────────────┘
+            │
+            ▼
+┌─────────────────────────┐
+│                         │
+│  Orchestration Service  │
+│                         │
+└───────┬─────┬───────────┘
+        │     │
+        │     │
+┌───────▼─────▼───────────┐
+│                         │
+│  LLM Query Service      │◄─────────┐
+│                         │          │
+└───────────┬─────────────┘          │
+            │                        │
+            ▼                        │
+┌─────────────────────────┐          │
+│                         │          │
+│  Evaluation Service     │          │
+│                         │          │
+└───────────┬─────────────┘          │
+            │                        │
+            ▼                        │
+┌─────────────────────────┐          │
+│                         │          │
+│    Storage Service      │          │
+│                         │          │
+└───────┬───────┬─────────┘          │
+        │       │                    │
+┌───────▼─┐ ┌───▼───────┐    ┌───────▼───────┐
+│         │ │           │    │               │
+│ChromaDB │ │PostgreSQL │    │  LLM Models   │
+│         │ │           │    │  (via LiteLLM)│
+└─────────┘ └───────────┘    └───────────────┘
+```
+
+1. **API Layer**: FastAPI application providing endpoints for evaluation and results
+2. **Orchestration Service**: Manages evaluation workflow and execution
+3. **LLM Query Service**: Handles interaction with LLM models via LiteLLM
+4. **Evaluation Service**: Evaluates responses using various metrics
+5. **Storage Service**: Stores data in PostgreSQL and ChromaDB
+6. **Visualization Layer**: Provides API endpoints for visualization
 
 ## Installation
 
-### Prerequisites
+### Requirements
 
-- Docker and Docker Compose
 - Python 3.9+
-- LLM API keys (optional)
+- PostgreSQL database
+- Required packages (see `requirements.txt`)
 
 ### Setup
 
 1. Clone the repository:
+   ```bash
+   git clone https://github.com/yourusername/llm-evaluation-system.git
+   cd llm-evaluation-system
+   ```
 
-```bash
-git clone https://github.com/yourusername/llm-eval.git
-cd llm-eval
-```
+2. Install the dependencies:
+   ```bash
+   pip install -r requirements.txt
+   ```
 
-2. Install Python dependencies:
+3. Set up the PostgreSQL database:
+   ```bash
+   psql -U postgres -f schema.sql
+   ```
 
-```bash
-pip install -r requirements.txt
-```
+4. Configure environment variables:
+   ```bash
+   export POSTGRES_URL="postgresql://user:password@localhost:5432/llm_eval"
+   export CHROMA_PATH="./chroma_db"
+   ```
 
-3. (Optional) Set up API keys for LLM providers:
-
-```bash
-export OPENAI_API_KEY=your_openai_key
-export ANTHROPIC_API_KEY=your_anthropic_key
-export COHERE_API_KEY=your_cohere_key
-```
-
-### Running with Docker Compose
-
-Start all services:
-
-```bash
-docker-compose up -d
-```
-
-This will start:
-- PostgreSQL database
-- ChromaDB vector database
-- Core services (prompt, LLM, evaluation, storage)
-- API gateway
-- Grafana for dashboards
-- Streamlit for interactive exploration
-
-## Running Tests
-
-The framework includes comprehensive tests to ensure reliability and correctness.
-
-### Running the Complete Test Suite
-
-To run all tests:
-
-```bash
-# From the project root
-python -m unittest discover -s tests
-```
-
-### Running Specific Test Modules
-
-To run specific test modules:
-
-```bash
-# Example: Run only the core models tests
-python -m unittest tests.test_core_models
-
-# Example: Run only the prompt service tests
-python -m unittest tests.test_prompt_service
-```
-
-### Running with Coverage
-
-To run tests with coverage reporting:
-
-```bash
-# Install coverage if not already installed
-pip install coverage
-
-# Run tests with coverage
-coverage run -m unittest discover -s tests
-
-# Generate coverage report
-coverage report -m
-
-# Generate HTML coverage report for detailed view
-coverage html
-# Then open htmlcov/index.html in your browser
-```
-
-### Running Tests in Docker
-
-You can also run the tests inside a Docker container:
-
-```bash
-# Build the test container
-docker build -f Dockerfile.test -t llm-eval-test .
-
-# Run the tests
-docker run llm-eval-test
-```
+5. Run the API server:
+   ```bash
+   uvicorn llm_eval.services.api_service.app:app --reload
+   ```
 
 ## Usage
 
 ### API Endpoints
 
-The system exposes a REST API at `http://localhost:8080` with the following endpoints:
+The system provides the following API endpoints:
 
-#### Prompts
+- **POST /api/v1/evaluations**: Create a new evaluation run
+- **GET /api/v1/evaluations/{run_id}**: Get the status of an evaluation run
+- **GET /api/v1/evaluations/{run_id}/results**: Get the results of an evaluation run
+- **POST /api/v1/performance**: Get performance metrics for a specific model
+- **POST /api/v1/semantic_search**: Search for semantically similar responses
+- **GET /api/v1/models/{model_provider}/{model_id}/responses**: Get responses from a specific model
 
-- `GET /prompts`: List available prompts
-- `POST /prompts`: Create a new prompt
-- `GET /prompts/{id}`: Get a specific prompt
-- `PUT /prompts/{id}`: Update a prompt
-- `DELETE /prompts/{id}`: Delete a prompt
-- `GET /prompts/search?query=...`: Search prompts
-- `POST /prompts/import`: Import prompts from file
-
-#### LLMs
-
-- `GET /models`: List available models
-- `POST /query`: Query a single model
-- `POST /batch`: Run a batch query
-
-#### Evaluations
-
-- `GET /evaluators`: List available evaluators
-- `POST /evaluate`: Evaluate a response
-- `POST /batch-evaluate`: Run batch evaluations
-
-#### Results
-
-- `GET /results`: Get evaluation results
-- `GET /results/model/{model}`: Get results for a specific model
-- `GET /results/compare?models=model1,model2`: Compare models
-
-### Example: Querying and Evaluating
+### Example: Running an Evaluation
 
 ```python
 import requests
+import json
 
-# Base URL for the API
-API_URL = "http://localhost:8080"
+# Create an evaluation run
+response = requests.post(
+    "http://localhost:8000/api/v1/evaluations",
+    json={
+        "models": [
+            {
+                "provider": "openai",
+                "model_id": "gpt-3.5-turbo",
+                "api_key": "your-openai-api-key"
+            }
+        ],
+        "themes": ["science_technology", "philosophy_ethics"],
+        "evaluator_ids": ["rule_based_evaluator"],
+        "metrics": ["relevance", "coherence", "toxicity"]
+    }
+)
 
-# 1. List available prompts in the "science_technology" category
-resp = requests.get(f"{API_URL}/prompts?category=science_technology")
-prompts = resp.json()
-prompt_ids = [p["id"] for p in prompts[:3]]  # Take the first 3 prompts
+run_id = response.json()["run_id"]
+print(f"Created evaluation run with ID: {run_id}")
 
-# 2. List available models
-resp = requests.get(f"{API_URL}/models")
-models = resp.json()
-model_names = [m["name"] for m in models if m["supported"]][:2]  # Take first 2 supported models
+# Check run status
+status_response = requests.get(f"http://localhost:8000/api/v1/evaluations/{run_id}")
+print(f"Run status: {status_response.json()['status']}")
 
-# 3. Run a batch query
-batch_request = {
-    "prompt_ids": prompt_ids,
-    "model_names": model_names,
-    "evaluations": ["toxicity", "relevance", "coherence"]  # Run these evaluations automatically
-}
-resp = requests.post(f"{API_URL}/batch", json=batch_request)
-batch_result = resp.json()
-
-# 4. Get the batch results
-batch_id = batch_result["batch_id"]
-resp = requests.get(f"{API_URL}/results?batch_id={batch_id}")
-results = resp.json()
-
-# Print a summary of the results
-for result in results:
-    model = result["model_name"]
-    prompt = result["prompt_text"][:30] + "..."  # Truncate for display
-    evaluations = result["evaluations"]
-    
-    print(f"Model: {model}, Prompt: {prompt}")
-    for eval_type, score in evaluations.items():
-        print(f"  {eval_type}: {score:.2f}")
-    print()
+# Query model performance
+performance_response = requests.post(
+    "http://localhost:8000/api/v1/performance",
+    json={
+        "model_provider": "openai",
+        "model_id": "gpt-3.5-turbo"
+    }
+)
+print(f"Model performance: {json.dumps(performance_response.json(), indent=2)}")
 ```
 
-### Visualization
-
-- Grafana dashboards: `http://localhost:3000` (admin/admin)
-- Streamlit app: `http://localhost:8501`
-
-## Extending the Framework
+## Extending the System
 
 ### Adding Custom Evaluators
 
-1. Create a new evaluator class:
+Create a new evaluator by implementing the `BaseEvaluator` interface:
 
 ```python
-from llm_eval.services.evaluation_service import EvaluatorInterface
-from llm_eval.core.models import EvaluationType, LLMResponse, EvaluationResult
-from llm_eval.core.utils import Result, generate_id
+from llm_eval.services.evaluation_service.base import BaseEvaluator
+from llm_eval.core.models import ModelResponse, EvaluationMetric, MetricScore, EvaluationResult
 
-class MyCustomEvaluator(EvaluatorInterface):
+class MyCustomEvaluator(BaseEvaluator):
     @property
-    def evaluation_type(self) -> EvaluationType:
-        return EvaluationType.CUSTOM
+    def evaluator_id(self) -> str:
+        return "my_custom_evaluator"
     
-    async def evaluate(self, response: LLMResponse, **kwargs) -> Result[EvaluationResult]:
-        # Your evaluation logic here
-        score = 0.75  # Example score
+    @property
+    def supported_metrics(self) -> List[EvaluationMetric]:
+        return [EvaluationMetric.CREATIVITY, EvaluationMetric.REASONING]
+    
+    async def evaluate(
+        self, 
+        response: ModelResponse, 
+        metrics: Optional[List[EvaluationMetric]] = None,
+        run_id: Optional[UUID] = None,
+    ) -> EvaluationResult:
+        # Implement your custom evaluation logic
+        scores = []
         
-        result = EvaluationResult(
-            id=generate_id(),
+        # Add scores for each metric
+        # ...
+        
+        return EvaluationResult(
             response_id=response.id,
-            evaluation_type=self.evaluation_type,
-            score=score,
-            explanation="Custom evaluation explanation"
+            run_id=run_id or UUID(int=0),
+            evaluator_id=self.evaluator_id,
+            scores=scores
         )
-        
-        return Result.ok(result)
 ```
 
-2. Register your evaluator with the service:
+Then register your evaluator with the evaluation service:
 
 ```python
-from llm_eval.services.evaluation_service import EvaluationService
+from llm_eval.services.evaluation_service.service import EvaluationService
+from my_custom_evaluator import MyCustomEvaluator
 
-service = EvaluationService()
-await service.register_evaluator(MyCustomEvaluator())
+evaluation_service = EvaluationService()
+evaluation_service.register_evaluator(MyCustomEvaluator())
 ```
 
-### Adding New LLM Providers
+## Key Features
 
-Extend the `LiteLLMService` to support additional providers, or create a new implementation of `LLMServiceInterface`.
+- **Diverse Thematic Testing**: Evaluate models across 10 different thematic categories
+- **Multi-Dimensional Metrics**: Assess performance across relevance, factual accuracy, coherence, toxicity, and more
+- **Semantic Search**: Find semantically similar responses across models and time
+- **Temporal Tracking**: Monitor model performance changes over time
+- **Extensible Framework**: Easily add new evaluators and metrics
 
 ## License
 
-MIT License
-
-## Diagram
-
-```
-┌─────────────────┐     ┌─────────────────┐     ┌─────────────────┐
-│  Prompt Service │     │   LLM Service   │     │   Evaluation    │
-│                 │     │                 │     │    Service      │
-│ - Store prompts │     │ - Query LLMs    │     │ - Run evals     │
-│ - Categorize    │────>│ - Handle auth   │────>│ - Score outputs │
-│ - Tag/filter    │     │ - Batch process │     │ - Compare models│
-└────────┬────────┘     └────────┬────────┘     └────────┬────────┘
-         │                       │                       │
-         │                       │                       │
-         │                       v                       │
-         │               ┌─────────────────┐            │
-         │               │  API Gateway    │            │
-         └─────────────>│                 │<────────────┘
-                         │ - Coordination  │
-                         │ - Authentication│
-                         └────────┬────────┘
-                                  │
-                                  │
-         ┌──────────────┐         │         ┌──────────────┐
-         │              │         │         │              │
-         │  PostgreSQL  │<────────┴────────>│   ChromaDB   │
-         │              │                   │              │
-         └──────────────┘                   └──────────────┘
-                 ^                                 ^
-                 │                                 │
-                 │                                 │
-         ┌───────┴───────┐               ┌────────┴─────────┐
-         │    Grafana    │               │     Streamlit    │
-         │   Dashboards  │               │  Interactive App │
-         └───────────────┘               └──────────────────┘
-```
+This project is licensed under the MIT License - see the LICENSE file for details.

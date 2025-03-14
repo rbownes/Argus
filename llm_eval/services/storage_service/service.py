@@ -1,297 +1,347 @@
 """
-Combined storage service implementation.
+Storage service implementation for PostgreSQL and ChromaDB.
 """
+import json
 from datetime import datetime
-from typing import Dict, List, Any, Optional, Union
+from typing import List, Dict, Any, Optional, Tuple, Union
+from uuid import UUID
 
-from llm_eval.core.models import (
-    Prompt, 
-    LLMResponse, 
-    EvaluationResult,
-    BatchQueryRequest,
-    BatchQueryResponse
-)
-from llm_eval.core.utils import Result, generate_id
-from .interface import StorageServiceInterface
-from .postgres_storage import PostgresStorage
-from .chroma_storage import ChromaStorage
+import chromadb
+import psycopg
+from chromadb.utils import embedding_functions
+from pydantic import BaseModel
+
+from llm_eval.core.models import ModelResponse, EvaluationResult, EvaluationRun
 
 
-class StorageService(StorageServiceInterface):
-    """
-    Storage service implementation combining PostgreSQL and ChromaDB.
-    
-    This service handles both structured data and vector embeddings.
-    """
+class StorageService:
+    """Service for storing and retrieving evaluation data."""
     
     def __init__(
         self,
-        # PostgreSQL settings
-        pg_host: str = "localhost",
-        pg_port: int = 5432,
-        pg_user: str = "postgres",
-        pg_password: str = "postgres",
-        pg_database: str = "llm_eval",
-        # ChromaDB settings
-        collection_name: str = "llm_eval_embeddings",
-        persist_directory: Optional[str] = None,
-        chroma_host: Optional[str] = None,
-        chroma_port: Optional[int] = None
+        postgres_url: str,
+        chroma_path: str = "./chroma_db",
+        embedding_model_name: str = "BAAI/bge-base-en-v1.5"
     ):
         """
-        Initialize the storage service.
+        Initialize storage connections.
         
         Args:
-            pg_host: PostgreSQL host.
-            pg_port: PostgreSQL port.
-            pg_user: PostgreSQL user.
-            pg_password: PostgreSQL password.
-            pg_database: PostgreSQL database name.
-            collection_name: ChromaDB collection name.
-            persist_directory: Directory to persist ChromaDB data (for local mode).
-            chroma_host: ChromaDB server host (for client mode).
-            chroma_port: ChromaDB server port (for client mode).
+            postgres_url: PostgreSQL connection URL
+            chroma_path: Path for ChromaDB storage
+            embedding_model_name: Name of the embedding model to use
         """
-        # Initialize PostgreSQL storage
-        self.pg_storage = PostgresStorage(
-            host=pg_host,
-            port=pg_port,
-            user=pg_user,
-            password=pg_password,
-            database=pg_database
+        # Initialize PostgreSQL connection
+        self.pg_conn = psycopg.connect(postgres_url)
+        
+        # Initialize ChromaDB client
+        self.chroma_client = chromadb.PersistentClient(path=chroma_path)
+        
+        # Initialize embedding function
+        self.embedding_function = embedding_functions.SentenceTransformerEmbeddingFunction(
+            model_name=embedding_model_name
         )
         
-        # Initialize ChromaDB storage
-        self.chroma_storage = ChromaStorage(
-            collection_name=collection_name,
-            persist_directory=persist_directory,
-            host=chroma_host,
-            port=chroma_port
+        # Create response collection if it doesn't exist
+        self.response_collection = self.chroma_client.get_or_create_collection(
+            name="model_responses",
+            embedding_function=self.embedding_function
         )
     
-    async def initialize(self) -> None:
-        """Initialize the storage service."""
-        await self.pg_storage.initialize()
+    async def store_run(self, run: EvaluationRun) -> None:
+        """Store an evaluation run in PostgreSQL."""
+        with self.pg_conn.cursor() as cursor:
+            cursor.execute(
+                """
+                INSERT INTO evaluation_runs 
+                (id, models, themes, start_time, end_time, status, metadata)
+                VALUES (%s, %s, %s, %s, %s, %s, %s)
+                """,
+                (
+                    str(run.id),
+                    json.dumps([m.model_dump() for m in run.models]),
+                    json.dumps([t.value for t in run.themes]),
+                    run.start_time,
+                    run.end_time,
+                    run.status,
+                    json.dumps(run.metadata)
+                )
+            )
+        self.pg_conn.commit()
     
-    async def close(self) -> None:
-        """Close the storage service."""
-        await self.pg_storage.close()
-    
-    # Structured Data Storage
-    
-    async def store_prompt(self, prompt: Prompt) -> Result[Prompt]:
-        """Store a prompt in the database."""
-        return await self.pg_storage.store_prompt(prompt)
-    
-    async def store_response(self, response: LLMResponse) -> Result[LLMResponse]:
-        """Store an LLM response in the database."""
-        return await self.pg_storage.store_response(response)
-    
-    async def store_evaluation(self, evaluation: EvaluationResult) -> Result[EvaluationResult]:
-        """Store an evaluation result in the database."""
-        return await self.pg_storage.store_evaluation(evaluation)
-    
-    async def store_batch(
-        self, 
-        batch_request: BatchQueryRequest,
-        batch_response: BatchQueryResponse
-    ) -> Result[str]:
-        """Store a batch query request and response."""
-        return await self.pg_storage.store_batch(batch_request, batch_response)
-    
-    # Data Retrieval
-    
-    async def get_prompt(self, prompt_id: str) -> Result[Prompt]:
-        """Get a prompt by ID."""
-        return await self.pg_storage.get_prompt(prompt_id)
-    
-    async def get_response(self, response_id: str) -> Result[LLMResponse]:
-        """Get an LLM response by ID."""
-        return await self.pg_storage.get_response(response_id)
-    
-    async def get_evaluation(self, evaluation_id: str) -> Result[EvaluationResult]:
-        """Get an evaluation result by ID."""
-        return await self.pg_storage.get_evaluation(evaluation_id)
-    
-    async def get_batch(self, batch_id: str) -> Result[BatchQueryResponse]:
-        """Get a batch query response by ID."""
-        return await self.pg_storage.get_batch(batch_id)
-    
-    # Querying
-    
-    async def query_responses(
-        self,
-        model_name: Optional[str] = None,
-        prompt_id: Optional[str] = None,
-        start_time: Optional[datetime] = None,
-        end_time: Optional[datetime] = None,
-        limit: int = 100,
-        offset: int = 0
-    ) -> Result[List[LLMResponse]]:
-        """Query LLM responses with filters."""
-        return await self.pg_storage.query_responses(
-            model_name=model_name,
-            prompt_id=prompt_id,
-            start_time=start_time,
-            end_time=end_time,
-            limit=limit,
-            offset=offset
-        )
-    
-    async def query_evaluations(
-        self,
-        response_id: Optional[str] = None,
-        evaluation_type: Optional[str] = None,
-        min_score: Optional[float] = None,
-        max_score: Optional[float] = None,
-        limit: int = 100,
-        offset: int = 0
-    ) -> Result[List[EvaluationResult]]:
-        """Query evaluation results with filters."""
-        return await self.pg_storage.query_evaluations(
-            response_id=response_id,
-            evaluation_type=evaluation_type,
-            min_score=min_score,
-            max_score=max_score,
-            limit=limit,
-            offset=offset
-        )
-    
-    # Vector Storage
-    
-    async def store_embedding(
-        self,
-        text: str,
-        embedding: List[float],
-        metadata: Dict[str, Any]
-    ) -> Result[str]:
-        """Store a text embedding in the vector database."""
-        # Generate an ID for the embedding
-        embedding_id = generate_id()
+    async def store_response(self, response: ModelResponse) -> str:
+        """
+        Store a model response in both PostgreSQL and ChromaDB.
         
-        # Store the embedding
-        return await self.chroma_storage.store_embedding(
-            id=embedding_id,
-            text=text,
-            embedding=embedding,
-            metadata=metadata
+        Returns:
+            ChromaDB document ID
+        """
+        # Store in PostgreSQL
+        with self.pg_conn.cursor() as cursor:
+            cursor.execute(
+                """
+                INSERT INTO model_responses
+                (id, prompt_id, model_provider, model_id, content, timestamp, latency_ms, tokens_used, metadata)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+                """,
+                (
+                    str(response.id),
+                    str(response.prompt_id),
+                    response.model_config.provider.value,
+                    response.model_config.model_id,
+                    response.content,
+                    response.timestamp,
+                    response.latency_ms,
+                    response.tokens_used,
+                    json.dumps(response.metadata)
+                )
+            )
+        self.pg_conn.commit()
+        
+        # Store in ChromaDB
+        doc_id = str(response.id)
+        self.response_collection.add(
+            documents=[response.content],
+            metadatas=[{
+                "id": str(response.id),
+                "prompt_id": str(response.prompt_id),
+                "model_provider": response.model_config.provider.value,
+                "model_id": response.model_config.model_id,
+                "timestamp": response.timestamp.isoformat(),
+                "latency_ms": response.latency_ms,
+                "tokens_used": response.tokens_used
+            }],
+            ids=[doc_id]
         )
+        
+        return doc_id
     
-    async def query_embeddings(
-        self,
-        query_embedding: List[float],
-        filter_metadata: Optional[Dict[str, Any]] = None,
-        limit: int = 10
-    ) -> Result[List[Dict[str, Any]]]:
-        """Query the vector database for similar embeddings."""
-        return await self.chroma_storage.query_embeddings(
-            query_embedding=query_embedding,
-            filter_metadata=filter_metadata,
-            limit=limit
-        )
+    async def store_evaluation_result(self, result: EvaluationResult) -> None:
+        """Store an evaluation result in PostgreSQL."""
+        with self.pg_conn.cursor() as cursor:
+            cursor.execute(
+                """
+                INSERT INTO evaluation_results
+                (id, response_id, run_id, evaluator_id, scores, timestamp, metadata)
+                VALUES (%s, %s, %s, %s, %s, %s, %s)
+                """,
+                (
+                    str(result.id),
+                    str(result.response_id),
+                    str(result.run_id),
+                    result.evaluator_id,
+                    json.dumps([s.model_dump() for s in result.scores]),
+                    result.timestamp,
+                    json.dumps(result.metadata)
+                )
+            )
+        self.pg_conn.commit()
     
-    async def query_embeddings_by_text(
+    async def query_semantically_similar(
         self,
         query_text: str,
-        filter_metadata: Optional[Dict[str, Any]] = None,
-        limit: int = 10
-    ) -> Result[List[Dict[str, Any]]]:
+        n_results: int = 10,
+        filter_metadata: Optional[Dict[str, Any]] = None
+    ) -> List[Dict[str, Any]]:
         """
-        Query the vector database for similar embeddings using text.
+        Query for semantically similar responses.
         
-        Note: In a real implementation, this would embed the query text
-        using a text embedding model. This is a simplified version.
+        Args:
+            query_text: Text to search for
+            n_results: Number of results to return
+            filter_metadata: Optional metadata filter
+            
+        Returns:
+            List of similar responses with metadata
         """
-        # In a real implementation, embed the query text here
-        # For simplicity, we'll return an empty result
-        return Result.ok([])
+        results = self.response_collection.query(
+            query_texts=[query_text],
+            n_results=n_results,
+            where=filter_metadata
+        )
+        
+        return [
+            {
+                "text": results["documents"][0][i],
+                "metadata": results["metadatas"][0][i],
+                "distance": results["distances"][0][i]
+            }
+            for i in range(len(results["documents"][0]))
+        ]
     
-    # Comparison
-    
-    async def compare_models(
+    async def get_model_performance(
         self,
-        model_names: List[str],
-        evaluation_type: Optional[str] = None,
-        prompt_ids: Optional[List[str]] = None,
+        model_provider: str,
+        model_id: str,
         start_time: Optional[datetime] = None,
         end_time: Optional[datetime] = None
-    ) -> Result[Dict[str, Any]]:
+    ) -> Dict[str, Any]:
         """
-        Compare the performance of multiple models.
+        Get performance metrics for a specific model.
         
-        This is a simplified implementation. In a real system,
-        you'd implement more sophisticated comparison logic.
+        Args:
+            model_provider: Model provider (e.g., "openai")
+            model_id: Model ID (e.g., "gpt-4")
+            start_time: Optional start time for filtering
+            end_time: Optional end time for filtering
+            
+        Returns:
+            Dictionary of performance metrics
         """
-        try:
-            comparison = {}
+        time_filter = ""
+        params = [model_provider, model_id]
+        
+        if start_time:
+            time_filter += " AND r.timestamp >= %s"
+            params.append(start_time)
+        
+        if end_time:
+            time_filter += " AND r.timestamp <= %s"
+            params.append(end_time)
+        
+        with self.pg_conn.cursor() as cursor:
+            cursor.execute(
+                f"""
+                SELECT 
+                    e.evaluator_id,
+                    m.metric,
+                    AVG(m.score) as avg_score,
+                    COUNT(*) as count
+                FROM 
+                    model_responses r
+                JOIN 
+                    evaluation_results e ON r.id = e.response_id
+                JOIN 
+                    (
+                        SELECT 
+                            result_id,
+                            json_array_elements(scores::json)->>'metric' as metric,
+                            (json_array_elements(scores::json)->>'score')::float as score
+                        FROM 
+                            evaluation_results
+                    ) m ON e.id = m.result_id
+                WHERE 
+                    r.model_provider = %s
+                    AND r.model_id = %s
+                    {time_filter}
+                GROUP BY 
+                    e.evaluator_id, m.metric
+                """,
+                params
+            )
             
-            # For each model, get all relevant evaluations
-            for model_name in model_names:
-                # Get responses for this model
-                responses_result = await self.query_responses(
-                    model_name=model_name,
-                    start_time=start_time,
-                    end_time=end_time,
-                    limit=1000  # Increased limit for analysis
-                )
-                
-                if responses_result.is_err:
-                    return responses_result
-                
-                responses = responses_result.unwrap()
-                
-                # Filter by prompt IDs if provided
-                if prompt_ids:
-                    prompt_id_set = set(prompt_ids)
-                    responses = [r for r in responses if r.prompt_id in prompt_id_set]
-                
-                if not responses:
-                    comparison[model_name] = {
-                        "count": 0,
-                        "evaluations": {}
-                    }
-                    continue
-                
-                # Get evaluations for these responses
-                response_ids = [r.id for r in responses]
-                all_evaluations = []
-                
-                for response_id in response_ids:
-                    evals_result = await self.query_evaluations(
-                        response_id=response_id,
-                        evaluation_type=evaluation_type
-                    )
-                    
-                    if evals_result.is_ok:
-                        all_evaluations.extend(evals_result.unwrap())
-                
-                # Group evaluations by type
-                eval_by_type = {}
-                for eval_result in all_evaluations:
-                    eval_type = eval_result.evaluation_type
-                    if eval_type not in eval_by_type:
-                        eval_by_type[eval_type] = []
-                    
-                    eval_by_type[eval_type].append(eval_result.score)
-                
-                # Calculate statistics for each evaluation type
-                eval_stats = {}
-                for eval_type, scores in eval_by_type.items():
-                    if not scores:
-                        continue
-                    
-                    eval_stats[eval_type] = {
-                        "count": len(scores),
-                        "average": sum(scores) / len(scores),
-                        "min": min(scores),
-                        "max": max(scores)
-                    }
-                
-                comparison[model_name] = {
-                    "count": len(responses),
-                    "evaluations": eval_stats
-                }
+            results = cursor.fetchall()
+        
+        # Organize results by evaluator and metric
+        performance = {}
+        for row in results:
+            evaluator_id, metric, avg_score, count = row
             
-            return Result.ok(comparison)
-        except Exception as e:
-            return Result.err(e)
+            if evaluator_id not in performance:
+                performance[evaluator_id] = {}
+                
+            performance[evaluator_id][metric] = {
+                "avg_score": float(avg_score),
+                "count": int(count)
+            }
+        
+        return performance
+    
+    async def get_responses_by_model(
+        self,
+        model_provider: str,
+        model_id: str,
+        limit: int = 100,
+        offset: int = 0
+    ) -> List[Dict[str, Any]]:
+        """
+        Get responses from a specific model.
+        
+        Args:
+            model_provider: Model provider (e.g., "openai")
+            model_id: Model ID (e.g., "gpt-4")
+            limit: Maximum number of responses to return
+            offset: Offset for pagination
+            
+        Returns:
+            List of responses with metadata
+        """
+        with self.pg_conn.cursor() as cursor:
+            cursor.execute(
+                """
+                SELECT 
+                    id, prompt_id, content, timestamp, latency_ms, tokens_used, metadata
+                FROM 
+                    model_responses
+                WHERE 
+                    model_provider = %s
+                    AND model_id = %s
+                ORDER BY 
+                    timestamp DESC
+                LIMIT %s OFFSET %s
+                """,
+                (model_provider, model_id, limit, offset)
+            )
+            
+            results = cursor.fetchall()
+        
+        responses = []
+        for row in results:
+            id_str, prompt_id, content, timestamp, latency_ms, tokens_used, metadata = row
+            
+            responses.append({
+                "id": id_str,
+                "prompt_id": prompt_id,
+                "content": content,
+                "timestamp": timestamp.isoformat() if timestamp else None,
+                "latency_ms": latency_ms,
+                "tokens_used": tokens_used,
+                "metadata": json.loads(metadata) if metadata else {}
+            })
+        
+        return responses
+    
+    async def get_evaluation_results_by_run(
+        self,
+        run_id: UUID
+    ) -> List[Dict[str, Any]]:
+        """
+        Get evaluation results for a specific run.
+        
+        Args:
+            run_id: UUID of the evaluation run
+            
+        Returns:
+            List of evaluation results with scores
+        """
+        with self.pg_conn.cursor() as cursor:
+            cursor.execute(
+                """
+                SELECT 
+                    id, response_id, evaluator_id, scores, timestamp, metadata
+                FROM 
+                    evaluation_results
+                WHERE 
+                    run_id = %s
+                ORDER BY 
+                    timestamp
+                """,
+                (str(run_id),)
+            )
+            
+            results = cursor.fetchall()
+        
+        evaluation_results = []
+        for row in results:
+            id_str, response_id, evaluator_id, scores, timestamp, metadata = row
+            
+            evaluation_results.append({
+                "id": id_str,
+                "response_id": response_id,
+                "evaluator_id": evaluator_id,
+                "scores": json.loads(scores) if scores else [],
+                "timestamp": timestamp.isoformat() if timestamp else None,
+                "metadata": json.loads(metadata) if metadata else {}
+            })
+        
+        return evaluation_results

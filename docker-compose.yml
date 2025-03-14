@@ -1,154 +1,52 @@
-# Docker Compose configuration for LLM Evaluation Framework
+version: '3.8'
 
 services:
-  # Database services
-  postgres:
-    image: postgres:14
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
     environment:
-      POSTGRES_USER: llmeval
-      POSTGRES_PASSWORD: llmeval
-      POSTGRES_DB: llmeval
+      - POSTGRES_URL=postgresql://llm_eval:llm_eval_password@postgres:5432/llm_eval
+      - CHROMA_PATH=/app/data/chroma_db
+    volumes:
+      - ./data:/app/data
+    depends_on:
+      - postgres
+    restart: unless-stopped
+
+  postgres:
+    image: postgres:15
+    environment:
+      - POSTGRES_USER=llm_eval
+      - POSTGRES_PASSWORD=llm_eval_password
+      - POSTGRES_DB=llm_eval
     volumes:
       - postgres_data:/var/lib/postgresql/data
+      - ./schema.sql:/docker-entrypoint-initdb.d/schema.sql
     ports:
       - "5432:5432"
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U llmeval"]
+      test: ["CMD-SHELL", "pg_isready -U llm_eval"]
       interval: 5s
       timeout: 5s
       retries: 5
 
-  chromadb:
-    image: ghcr.io/chroma-core/chroma:latest
-    volumes:
-      - chroma_data:/chroma/chroma
-    ports:
-      - "8000:8000"
-    environment:
-      - ALLOW_RESET=true
-
-  # Core services
-  api_gateway:
-    build:
-      context: .
-      dockerfile: llm_eval/services/api_gateway/Dockerfile
-    ports:
-      - "8080:8080"
-    volumes:
-      - .:/app
-    environment:
-      - POSTGRES_HOST=postgres
-      - POSTGRES_PORT=5432
-      - POSTGRES_USER=llmeval
-      - POSTGRES_PASSWORD=llmeval
-      - POSTGRES_DB=llmeval
-      - CHROMADB_HOST=chromadb
-      - CHROMADB_PORT=8000
-    depends_on:
-      postgres:
-        condition: service_healthy
-      chromadb:
-        condition: service_started
-
-  prompt_service:
-    build:
-      context: .
-      dockerfile: services/prompt_service/Dockerfile
-    environment:
-      - POSTGRES_HOST=postgres
-      - POSTGRES_PORT=5432
-      - POSTGRES_USER=llmeval
-      - POSTGRES_PASSWORD=llmeval
-      - POSTGRES_DB=llmeval
-    depends_on:
-      postgres:
-        condition: service_healthy
-
-  llm_service:
-    build:
-      context: .
-      dockerfile: services/llm_service/Dockerfile
-    environment:
-      - POSTGRES_HOST=postgres
-      - POSTGRES_PORT=5432
-      - POSTGRES_USER=llmeval
-      - POSTGRES_PASSWORD=llmeval
-      - POSTGRES_DB=llmeval
-      # API keys (use environment variables in production)
-      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
-      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
-      - COHERE_API_KEY=${COHERE_API_KEY:-}
-    depends_on:
-      postgres:
-        condition: service_healthy
-
-  evaluation_service:
-    build:
-      context: .
-      dockerfile: services/evaluation_service/Dockerfile
-    environment:
-      - POSTGRES_HOST=postgres
-      - POSTGRES_PORT=5432
-      - POSTGRES_USER=llmeval
-      - POSTGRES_PASSWORD=llmeval
-      - POSTGRES_DB=llmeval
-    depends_on:
-      postgres:
-        condition: service_healthy
-
-  storage_service:
-    build:
-      context: .
-      dockerfile: services/storage_service/Dockerfile
-    environment:
-      - POSTGRES_HOST=postgres
-      - POSTGRES_PORT=5432
-      - POSTGRES_USER=llmeval
-      - POSTGRES_PASSWORD=llmeval
-      - POSTGRES_DB=llmeval
-      - CHROMADB_HOST=chromadb
-      - CHROMADB_PORT=8000
-    depends_on:
-      postgres:
-        condition: service_healthy
-      chromadb:
-        condition: service_started
-
-  # Visualization
   grafana:
     image: grafana/grafana:latest
     ports:
       - "3001:3000"
-    volumes:
-      - grafana_data:/var/lib/grafana
     environment:
       - GF_SECURITY_ADMIN_USER=admin
       - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_USERS_ALLOW_SIGN_UP=false
+    volumes:
+      - grafana_data:/var/lib/grafana
     depends_on:
       - postgres
-
-  # Streamlit app for interactive exploration
-  streamlit:
-    build:
-      context: .
-      dockerfile: services/streamlit/Dockerfile
-    ports:
-      - "8501:8501"
-    environment:
-      - POSTGRES_HOST=postgres
-      - POSTGRES_PORT=5432
-      - POSTGRES_USER=llmeval
-      - POSTGRES_PASSWORD=llmeval
-      - POSTGRES_DB=llmeval
-      - CHROMADB_HOST=chromadb
-      - CHROMADB_PORT=8000
-    depends_on:
-      postgres:
-        condition: service_healthy
-      chromadb:
-        condition: service_started
+    restart: unless-stopped
 
 volumes:
   postgres_data:
-  chroma_data:
   grafana_data:

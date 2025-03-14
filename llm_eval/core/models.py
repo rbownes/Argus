@@ -3,13 +3,24 @@ Core data models for the LLM Evaluation Framework.
 """
 from datetime import datetime
 from enum import Enum
-from typing import Dict, List, Optional, Union, Any
+from typing import Dict, List, Optional, Any, Union
+from uuid import UUID, uuid4
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, validator
 
 
-class PromptCategory(str, Enum):
-    """Categories for organizing prompts."""
+class ModelProvider(str, Enum):
+    """Supported LLM model providers."""
+    OPENAI = "openai"
+    ANTHROPIC = "anthropic"
+    COHERE = "cohere"
+    MISTRAL = "mistral"
+    GOOGLE = "google"
+    OTHER = "other"
+
+
+class ThemeCategory(str, Enum):
+    """Categories for evaluation themes."""
     SCIENCE_TECHNOLOGY = "science_technology"
     ARTS_LITERATURE = "arts_literature"
     HISTORY_CULTURE = "history_culture"
@@ -23,82 +34,110 @@ class PromptCategory(str, Enum):
     OTHER = "other"
 
 
-class Prompt(BaseModel):
-    """A prompt for querying LLMs."""
-    id: Optional[str] = None
+class ModelConfig(BaseModel):
+    """Configuration for an LLM model."""
+    provider: ModelProvider
+    model_id: str
+    api_key: Optional[str] = None
+    parameters: Dict[str, Any] = Field(default_factory=dict)
+
+    class Config:
+        frozen = True
+
+
+class QueryPrompt(BaseModel):
+    """A prompt to be sent to an LLM."""
+    id: UUID = Field(default_factory=uuid4)
     text: str
-    category: PromptCategory = PromptCategory.OTHER
-    tags: List[str] = Field(default_factory=list)
+    theme: Optional[ThemeCategory] = None
     metadata: Dict[str, Any] = Field(default_factory=dict)
-    created_at: datetime = Field(default_factory=datetime.now)
-    
+
     class Config:
         json_schema_extra = {
             "example": {
                 "text": "Explain quantum entanglement to a high school student",
-                "category": "science_technology",
-                "tags": ["physics", "quantum", "educational"]
+                "theme": "science_technology",
+                "metadata": {"complexity": "medium", "target_audience": "high_school"}
             }
         }
 
 
-class LLMProvider(str, Enum):
-    """Supported LLM providers."""
-    OPENAI = "openai"
-    ANTHROPIC = "anthropic"
-    COHERE = "cohere"
-    MISTRAL = "mistral"
-    GOOGLE = "google"
-    OTHER = "other"
-
-
-class LLMResponse(BaseModel):
-    """A response from an LLM."""
-    id: Optional[str] = None
-    prompt_id: str
-    prompt_text: str
-    model_name: str
-    provider: LLMProvider
-    response_text: str
-    tokens_used: Optional[int] = None
+class ModelResponse(BaseModel):
+    """Response from an LLM model."""
+    id: UUID = Field(default_factory=uuid4)
+    prompt_id: UUID
+    model_config: ModelConfig
+    content: str
+    timestamp: datetime = Field(default_factory=datetime.utcnow)
     latency_ms: Optional[int] = None
+    tokens_used: Optional[int] = None
+    embedding_id: Optional[UUID] = None
     metadata: Dict[str, Any] = Field(default_factory=dict)
-    created_at: datetime = Field(default_factory=datetime.now)
 
 
-class EvaluationType(str, Enum):
-    """Types of evaluations that can be performed."""
-    TOXICITY = "toxicity"
-    QUALITY = "quality"
-    FACTUALITY = "factuality"
-    CONSISTENCY = "consistency"
+class EvaluationMetric(str, Enum):
+    """Standard evaluation metrics for LLM responses."""
     RELEVANCE = "relevance"
-    CORRECTNESS = "correctness"
+    FACTUAL_ACCURACY = "factual_accuracy"
     COHERENCE = "coherence"
-    CUSTOM = "custom"
+    TOXICITY = "toxicity"
+    CREATIVITY = "creativity"
+    REASONING = "reasoning"
+    INSTRUCTION_FOLLOWING = "instruction_following"
+    CORRECTNESS = "correctness"
+    CONSISTENCY = "consistency"
+    QUALITY = "quality"
 
 
-class EvaluationResult(BaseModel):
-    """Result of an evaluation on an LLM response."""
-    id: Optional[str] = None
-    response_id: str
-    evaluation_type: EvaluationType
+class MetricScore(BaseModel):
+    """Score for a single evaluation metric."""
+    metric: EvaluationMetric
     score: float
     explanation: Optional[str] = None
     metadata: Dict[str, Any] = Field(default_factory=dict)
-    created_at: datetime = Field(default_factory=datetime.now)
+
+
+class EvaluationResult(BaseModel):
+    """Result of evaluating a model response."""
+    id: UUID = Field(default_factory=uuid4)
+    response_id: UUID
+    run_id: UUID
+    evaluator_id: str
+    scores: List[MetricScore]
+    timestamp: datetime = Field(default_factory=datetime.utcnow)
+    metadata: Dict[str, Any] = Field(default_factory=dict)
+
+    @property
+    def average_score(self) -> float:
+        """Calculate the average score across all metrics."""
+        if not self.scores:
+            return 0.0
+        return sum(score.score for score in self.scores) / len(self.scores)
+
+
+class EvaluationRun(BaseModel):
+    """A complete evaluation cycle for one or more models."""
+    id: UUID = Field(default_factory=uuid4)
+    models: List[ModelConfig]
+    themes: List[ThemeCategory]
+    start_time: datetime = Field(default_factory=datetime.utcnow)
+    end_time: Optional[datetime] = None
+    status: str = "pending"
+    metadata: Dict[str, Any] = Field(default_factory=dict)
 
 
 class BatchQueryRequest(BaseModel):
     """Request to query multiple LLMs with multiple prompts."""
-    prompt_ids: List[str]
-    model_names: List[str]
-    evaluations: List[EvaluationType] = []
+    models: List[ModelConfig]
+    themes: List[ThemeCategory]
+    evaluator_ids: List[str]
+    metrics: Optional[List[EvaluationMetric]] = None
+    temperature: float = 0.7
+    max_tokens: int = 1024
     metadata: Dict[str, Any] = Field(default_factory=dict)
 
 
 class BatchQueryResponse(BaseModel):
     """Response from a batch query."""
-    batch_id: str
-    responses: List[LLMResponse]
-    evaluations: Optional[List[EvaluationResult]] = None
+    run_id: UUID
+    status: str = "pending"
