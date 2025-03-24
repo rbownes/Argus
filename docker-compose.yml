@@ -9,10 +9,26 @@ services:
       - "8000:8000"
     environment:
       - PYTHONPATH=/app
+      - LOG_LEVEL=INFO
+      - API_KEY=${API_KEY}
+      - QUERY_STORAGE_URL=http://query-storage:8000
+      - EVALUATION_STORAGE_URL=http://evaluation-storage:8000 
+      - JUDGE_SERVICE_URL=http://judge-service:8000
     depends_on:
       - query-storage
       - evaluation-storage
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 15s
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
 
   query-storage:
     build:
@@ -24,7 +40,20 @@ services:
       - query_data:/app/data
     environment:
       - PYTHONPATH=/app
+      - LOG_LEVEL=INFO
+      - API_KEY=${API_KEY}
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 15s
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
 
   evaluation-storage:
     build:
@@ -36,7 +65,20 @@ services:
       - evaluation_data:/app/evaluation_data
     environment:
       - PYTHONPATH=/app
+      - LOG_LEVEL=INFO
+      - API_KEY=${API_KEY}
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 15s
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
 
   judge-service:
     build:
@@ -48,13 +90,34 @@ services:
       - judge_data:/app/judge_data
     environment:
       - PYTHONPATH=/app
+      - LOG_LEVEL=INFO
+      - API_KEY=${API_KEY}
+      - LITELLM_API_KEY=${LITELLM_API_KEY}
       - GOOGLE_API_KEY=${GOOGLE_API_KEY}
-      - LITELLM_MODEL_DEFAULT_TEMPERATURE=${LITELLM_MODEL_DEFAULT_TEMPERATURE}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - LITELLM_MODEL_DEFAULT_TEMPERATURE=${LITELLM_MODEL_DEFAULT_TEMPERATURE:-0.7}
+      - POSTGRES_HOST=postgres
+      - POSTGRES_PORT=5432
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=panopticon
+      - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/panopticon
     depends_on:
       - postgres
       - query-storage
       - evaluation-storage
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 15s
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1G
 
   postgres:
     image: postgres:15
@@ -66,9 +129,52 @@ services:
       - postgres_data:/var/lib/postgresql/data
     ports:
       - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1G
+
+  visualization-service:
+    build:
+      context: .
+      dockerfile: visualization_service/dockerfile
+    ports:
+      - "8004:8000"
+    environment:
+      - PYTHONPATH=/app
+      - LOG_LEVEL=INFO
+      - API_KEY=${API_KEY}
+      - POSTGRES_HOST=postgres
+      - POSTGRES_PORT=5432
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=panopticon
+      - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/panopticon
+    depends_on:
+      - postgres
+      - judge-service
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 15s
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
 
 volumes:
   query_data:
   evaluation_data:
   judge_data:
-  postgres_data: 
+  postgres_data:

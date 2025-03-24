@@ -1,0 +1,26 @@
+# Database Migrations
+
+This directory contains the database migration scripts for the Panopticon system, using Alembic.
+
+## Running Migrations
+
+To run the migrations:
+
+```bash
+alembic upgrade head
+```
+
+## Creating New Migrations
+
+To create a new migration:
+
+```bash
+alembic revision --autogenerate -m "Description of the migration"
+```
+
+## Migration History
+
+To view the migration history:
+
+```bash
+alembic history
