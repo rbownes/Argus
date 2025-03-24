@@ -1,0 +1,74 @@
+version: '3.8'
+
+services:
+  main-app:
+    build:
+      context: .
+      dockerfile: app/dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      - PYTHONPATH=/app
+    depends_on:
+      - query-storage
+      - evaluation-storage
+    restart: unless-stopped
+
+  query-storage:
+    build:
+      context: .
+      dockerfile: query_storage/dockerfile
+    ports:
+      - "8001:8000"
+    volumes:
+      - query_data:/app/data
+    environment:
+      - PYTHONPATH=/app
+    restart: unless-stopped
+
+  evaluation-storage:
+    build:
+      context: .
+      dockerfile: evaluation_storage/dockerfile
+    ports:
+      - "8002:8000"
+    volumes:
+      - evaluation_data:/app/evaluation_data
+    environment:
+      - PYTHONPATH=/app
+    restart: unless-stopped
+
+  judge-service:
+    build:
+      context: .
+      dockerfile: judge_service/dockerfile
+    ports:
+      - "8003:8000"
+    volumes:
+      - judge_data:/app/judge_data
+    environment:
+      - PYTHONPATH=/app
+      - GOOGLE_API_KEY=${GOOGLE_API_KEY}
+      - LITELLM_MODEL_DEFAULT_TEMPERATURE=${LITELLM_MODEL_DEFAULT_TEMPERATURE}
+    depends_on:
+      - postgres
+      - query-storage
+      - evaluation-storage
+    restart: unless-stopped
+
+  postgres:
+    image: postgres:15
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=panopticon
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+
+volumes:
+  query_data:
+  evaluation_data:
+  judge_data:
+  postgres_data: 
