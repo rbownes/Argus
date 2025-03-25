@@ -12,7 +12,8 @@ RUN npm install
 # Copy frontend source code
 COPY visualization_service/frontend/ ./
 
-# Build frontend
+# Build frontend with increased memory limit
+ENV NODE_OPTIONS="--max-old-space-size=4096"
 RUN npm run build
 
 # Stage 2: Backend build
@@ -35,13 +36,16 @@ RUN pip install --no-cache-dir -U pip && \
     pip install --no-cache-dir -r requirements.txt
 
 # Stage 3: Final image
-FROM python:3.11-slim
+FROM python:3.11-slim AS runtime
 
 WORKDIR /app
 
 # Copy the virtual environment from backend-build
 COPY --from=backend-build /venv /venv
-ENV PATH="/venv/bin:$PATH"
+ENV PATH="/venv/bin:$PATH" PYTHONPATH="/app"
+
+# Verify that uvicorn is available
+RUN /venv/bin/pip list | grep uvicorn
 
 # Copy the frontend build from frontend-build
 COPY --from=frontend-build /app/frontend/dist /app/visualization_service/frontend/dist
@@ -64,5 +68,5 @@ EXPOSE 8000
 HEALTHCHECK --interval=30s --timeout=10s --start-period=15s --retries=3 \
     CMD curl -f http://localhost:8000/health || exit 1
 
-# Run the application with Uvicorn server
-CMD ["uvicorn", "visualization_service.api:app", "--host", "0.0.0.0", "--port", "8000"]
+# Run the application with Uvicorn server - use Python module approach for better compatibility
+CMD ["/venv/bin/python", "-m", "uvicorn", "visualization_service.api:app", "--host", "0.0.0.0", "--port", "8000"]
