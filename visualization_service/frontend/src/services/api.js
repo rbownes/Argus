@@ -15,7 +15,7 @@ api.interceptors.request.use(
     // Add API key to every request
     // For demo purposes, we'll use a hardcoded key that matches the backend default
     // In production, you'd get this from a more secure source
-    config.headers['X-API-Key'] = 'development_key'
+    config.headers['X-API-Key'] = 'dev_api_key_for_testing'
     return config
   },
   (error) => {

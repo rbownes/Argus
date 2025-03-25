@@ -39,7 +39,7 @@ COPY shared/ ./shared/
 COPY migrations/ ./migrations/
 
 # Create data directory for ChromaDB
-RUN mkdir -p /app/judge_data
+RUN mkdir -p /app/judge_service_data
 
 # Expose the port the app runs on
 EXPOSE 8000

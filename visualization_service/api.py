@@ -92,9 +92,9 @@ class SortParams(BaseModel):
 
 # ---------------------- API Endpoints ----------------------
 
-@app.get("/")
-async def root():
-    """Root endpoint."""
+@app.get("/api")
+async def api_root():
+    """API root endpoint."""
     return {
         "name": "Panopticon Visualization Service",
         "version": "0.1.0",
@@ -389,9 +389,6 @@ async def websocket_endpoint(websocket: WebSocket):
     except Exception as e:
         logger.error(f"WebSocket error: {str(e)}")
 
-# Mount static files for frontend - this will serve the React frontend
-app.mount("/", StaticFiles(directory="visualization_service/frontend/dist", html=True), name="frontend")
-
 # Legacy endpoint compatibility
 app.get("/api/dashboard/summary")(get_dashboard_summary)
 app.get("/api/dashboard/timeline")(get_performance_timeline)
@@ -399,3 +396,7 @@ app.get("/api/dashboard/models")(get_model_comparison)
 app.get("/api/dashboard/themes")(get_theme_analysis)
 app.get("/api/dashboard/results")(get_detailed_results)
 app.get("/api/dashboard/filters")(get_filter_options)
+
+# Mount static files for frontend - this will serve the React frontend
+# This must be the last line to ensure API routes are registered first
+app.mount("/", StaticFiles(directory="visualization_service/frontend/dist", html=True), name="frontend")

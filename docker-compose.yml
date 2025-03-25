@@ -10,7 +10,7 @@ services:
       - LOG_LEVEL=INFO
       - API_KEY=${API_KEY}
       - QUERY_STORAGE_URL=http://query-storage:8000
-      - EVALUATION_STORAGE_URL=http://evaluation-storage:8000 
+      - EVALUATION_STORAGE_URL=http://evaluation-storage:8000
       - JUDGE_SERVICE_URL=http://judge-service:8000
     depends_on:
       - query-storage
@@ -35,7 +35,7 @@ services:
     ports:
       - "8001:8000"
     volumes:
-      - query_data:/app/data
+      - query_data:/app/query_storage_data
     environment:
       - PYTHONPATH=/app
       - LOG_LEVEL=INFO
@@ -60,7 +60,7 @@ services:
     ports:
       - "8002:8000"
     volumes:
-      - evaluation_data:/app/evaluation_data
+      - evaluation_data:/app/evaluation_storage_data
     environment:
       - PYTHONPATH=/app
       - LOG_LEVEL=INFO
@@ -85,12 +85,13 @@ services:
     ports:
       - "8003:8000"
     volumes:
-      - judge_data:/app/judge_data
+      - judge_data:/app/judge_service_data
     environment:
       - PYTHONPATH=/app
       - LOG_LEVEL=INFO
       - API_KEY=${API_KEY}
       - LITELLM_API_KEY=${LITELLM_API_KEY}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
       - GOOGLE_API_KEY=${GOOGLE_API_KEY}
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
       - LITELLM_MODEL_DEFAULT_TEMPERATURE=${LITELLM_MODEL_DEFAULT_TEMPERATURE:-0.7}
@@ -100,6 +101,8 @@ services:
       - POSTGRES_PASSWORD=postgres
       - POSTGRES_DB=panopticon
       - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/panopticon
+      - QUERY_STORAGE_URL=http://query-storage:8000
+      - EVALUATION_STORAGE_URL=http://evaluation-storage:8000
     depends_on:
       - postgres
       - query-storage

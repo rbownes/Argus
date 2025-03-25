@@ -36,7 +36,7 @@ COPY query_storage/ ./query_storage/
 COPY shared/ ./shared/
 
 # Create data directory for ChromaDB
-RUN mkdir -p /app/data
+RUN mkdir -p /app/query_storage_data
 
 # Expose the port the app runs on
 EXPOSE 8000

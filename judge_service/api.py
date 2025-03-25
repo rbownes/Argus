@@ -19,6 +19,7 @@ from shared.utils import (
 from shared.config import ServiceConfig
 from shared.middleware import add_middleware
 from .judge_storage import JudgeStorage, EvaluationResult
+from .service_clients import QueryStorageClient, EvaluationStorageClient
 
 # Create FastAPI app
 app = create_api_app(
@@ -84,12 +85,8 @@ async def evaluate_single_query(request: QueryEvaluationRequest):
     Returns the LLM output and evaluation results.
     """
     try:
-        # Import needed services
-        from query_storage.query_storage import QueryStorage
-        from evaluation_storage.evaluation_storage import EvaluationStorage
-        
-        query_storage = QueryStorage()
-        eval_storage = EvaluationStorage()
+        # Initialize service clients
+        eval_client = EvaluationStorageClient()
         
         # Run query through LLM
         try:
@@ -110,16 +107,12 @@ async def evaluate_single_query(request: QueryEvaluationRequest):
         for prompt_id in request.evaluation_prompt_ids:
             # Get the evaluation prompt
             try:
-                metric = eval_storage.get_metric_by_id(prompt_id)
+                metric = await eval_client.get_metric_by_id(prompt_id)
                 if not metric:
-                    # Try as metric_type if not found as ID
-                    metrics = eval_storage.get_metrics_by_type(prompt_id, limit=1)
-                    if not metrics:
-                        raise ApiError(
-                            status_code=404, 
-                            message=f"Evaluation prompt not found: {prompt_id}"
-                        )
-                    metric = metrics[0]
+                    raise ApiError(
+                        status_code=404, 
+                        message=f"Evaluation prompt not found: {prompt_id}"
+                    )
             except Exception as e:
                 if isinstance(e, ApiError):
                     raise
@@ -173,12 +166,11 @@ async def evaluate_theme_queries(request: ThemeEvaluationRequest):
     Returns a list of outputs and evaluation results.
     """
     try:
-        # Get queries by theme
-        from query_storage.query_storage import QueryStorage
-        query_storage = QueryStorage()
+        # Get queries by theme using the client
+        query_client = QueryStorageClient()
         
         try:
-            queries = query_storage.get_queries_by_theme(request.theme, request.limit)
+            queries = await query_client.get_queries_by_theme(request.theme, request.limit)
         except Exception as e:
             raise ApiError(
                 status_code=500, 

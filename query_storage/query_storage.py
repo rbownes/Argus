@@ -11,7 +11,7 @@ import logging
 class QueryStorage:
     """Storage for queries using ChromaDB vector database."""
     
-    def __init__(self, persist_directory: str = "./data"):
+    def __init__(self, persist_directory: str = "./query_storage_data"):
         """
         Initialize ChromaDB client and collection.
         

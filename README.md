@@ -44,8 +44,9 @@ graph TB
         QueryStorage --> ChromaQuery[(ChromaDB - Queries)]
         EvalStorage --> ChromaEval[(ChromaDB - Evaluations)]
         Judge --> |Store Results| Postgres[(PostgreSQL)]
-        Judge --> |Get Queries| ChromaQuery
-        Judge --> |Get Evaluation Prompts| ChromaEval
+        Judge --> |HTTP API Calls| QueryStorage
+        Judge --> |HTTP API Calls| EvalStorage
+        Judge --> ChromaJudge[(ChromaDB - LLM Outputs)]
         Viz --> |Read Results| Postgres
     end
     
@@ -61,6 +62,22 @@ graph TB
         Dashboard --> |Detailed Results| Details[Detailed Results]
     end
 ```
+
+### Service Communication Architecture
+
+Panopticon implements a proper microservice communication pattern where services communicate with each other via well-defined HTTP APIs rather than direct imports. This architecture:
+
+1. **Maintains Service Isolation**: Each service operates independently with its own database instances
+2. **Prevents Resource Conflicts**: Avoids issues with shared resources like ChromaDB instances
+3. **Improves Scalability**: Services can be scaled independently based on load
+4. **Enhances Resilience**: Services can handle failures of other services gracefully
+
+The system uses a shared HTTP client utility (`shared/service_client.py`) that provides:
+- Standardized error handling
+- Consistent authentication
+- Logging for API calls between services
+
+Each service that needs to communicate with other services has client wrappers that provide type-safe methods for interacting with those services. For example, the Judge Service has client wrappers for the Query Storage and Evaluation Storage services.
 
 ### Component Details
 
@@ -274,7 +291,7 @@ This workflow demonstrates how to track a model's performance across multiple ev
 ```bash
 curl -X POST http://localhost:8001/api/v1/queries \
   -H "Content-Type: application/json" \
-  -H "X-API-Key: your_api_key_here" \
+  -H "X-API-Key: dev_api_key_for_testing" \
   -d '{
     "query": "Explain the concept of quantum entanglement to a high school student.",
     "theme": "science_explanations",
@@ -293,7 +310,7 @@ Repeat for multiple queries within the same theme.
 ```bash
 curl -X POST http://localhost:8002/api/v1/evaluation-metrics \
   -H "Content-Type: application/json" \
-  -H "X-API-Key: your_api_key_here" \
+  -H "X-API-Key: dev_api_key_for_testing" \
   -d '{
     "prompt": "Evaluate this explanation on clarity. Does it clearly explain the concept without using unnecessarily complex terminology? Is it appropriate for the target audience (high school students)? Rate on a scale of 1-10.",
     "metric_type": "clarity",
@@ -307,7 +324,7 @@ curl -X POST http://localhost:8002/api/v1/evaluation-metrics \
 ```bash
 curl -X POST http://localhost:8002/api/v1/evaluation-metrics \
   -H "Content-Type: application/json" \
-  -H "X-API-Key: your_api_key_here" \
+  -H "X-API-Key: dev_api_key_for_testing" \
   -d '{
     "prompt": "Evaluate this explanation on scientific accuracy. Are there any factual errors or misleading simplifications? Rate on a scale of 1-10.",
     "metric_type": "accuracy",
@@ -325,12 +342,12 @@ Evaluate all queries in a theme against a specific model:
 ```bash
 curl -X POST http://localhost:8003/api/v1/evaluate/theme \
   -H "Content-Type: application/json" \
-  -H "X-API-Key: your_api_key_here" \
+  -H "X-API-Key: dev_api_key_for_testing" \
   -d '{
     "theme": "science_explanations",
-    "model_id": "gpt-4",
+    "model_id": "gpt-4o-mini-2024-07-18",
     "evaluation_prompt_ids": ["clarity", "accuracy"],
-    "judge_model": "gpt-4"
+    "judge_model": "gpt-4o-mini-2024-07-18"
   }'
 ```
 
@@ -341,7 +358,7 @@ Wait for a model update (e.g., new GPT-4 version), then run the same evaluation 
 ```bash
 curl -X POST http://localhost:8003/api/v1/evaluate/theme \
   -H "Content-Type: application/json" \
-  -H "X-API-Key: your_api_key_here" \
+  -H "X-API-Key: dev_api_key_for_testing" \
   -d '{
     "theme": "science_explanations",
     "model_id": "gpt-4",

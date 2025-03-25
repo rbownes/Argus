@@ -46,6 +46,28 @@ class EvaluationMetricResponse(BaseModel):
     metadata: Dict = Field(..., description="Metadata including metric type and other attributes")
 
 # API Routes
+@app.get("/api/v1/evaluation-metrics/{metric_id}", response_model=ApiResponse, tags=["Evaluation Metrics"])
+async def get_metric_by_id(metric_id: str):
+    """
+    Retrieve an evaluation metric by its ID.
+    
+    Returns the metric data or 404 if not found.
+    """
+    try:
+        result = storage.get_metric_by_id(metric_id)
+        
+        if not result:
+            raise ApiError(status_code=404, message=f"Evaluation metric not found: {metric_id}")
+            
+        return ApiResponse(
+            status=ResponseStatus.SUCCESS,
+            data=result
+        )
+    except Exception as e:
+        if isinstance(e, ApiError):
+            raise
+        raise ApiError(status_code=500, message=str(e))
+
 @app.post("/api/v1/evaluation-metrics", response_model=ApiResponse, tags=["Evaluation Metrics"])
 async def store_evaluation_metric(request: EvaluationMetricRequest):
     """

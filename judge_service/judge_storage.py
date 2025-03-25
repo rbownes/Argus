@@ -122,7 +122,7 @@ class JudgeStorage:
     
     def __init__(
         self, 
-        persist_directory: str = "./judge_data",
+        persist_directory: str = "./judge_service_data",
         postgres_url: str = None
     ):
         """
