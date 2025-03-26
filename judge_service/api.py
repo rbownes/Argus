@@ -6,6 +6,8 @@ from pydantic import BaseModel, Field, validator
 from typing import Dict, List, Optional, Any
 import os
 import asyncio
+import json
+import logging
 from datetime import datetime
 
 from shared.utils import (
@@ -295,23 +297,8 @@ async def list_available_models():
     Returns a list of models that can be used for running queries and evaluation.
     """
     try:
-        # Load models from configuration file
-        models_config_path = os.path.join(os.path.dirname(__file__), "config", "models.json")
-        
-        if os.path.exists(models_config_path):
-            with open(models_config_path, "r") as f:
-                config = json.load(f)
-                models = config.get("models", [])
-        else:
-            # Fallback to defaults if file doesn't exist
-            models = [
-                {"id": "gpt-4", "name": "GPT-4", "provider": "openai", "is_judge_compatible": True},
-                {"id": "gpt-3.5-turbo", "name": "GPT-3.5 Turbo", "provider": "openai", "is_judge_compatible": True},
-                {"id": "claude-3-opus-20240229", "name": "Claude 3 Opus", "provider": "anthropic", "is_judge_compatible": True},
-                {"id": "claude-3-sonnet-20240229", "name": "Claude 3 Sonnet", "provider": "anthropic", "is_judge_compatible": True},
-                {"id": "gemini-pro", "name": "Gemini Pro", "provider": "google", "is_judge_compatible": False},
-                {"id": "chatgpt-4o-latest", "name": "ChatGPT-4o (Latest)", "provider": "openai", "is_judge_compatible": True}
-            ]
+        # Get models from Provider Manager
+        models = await storage.list_available_models()
         
         return ApiResponse(
             status=ResponseStatus.SUCCESS,
@@ -348,7 +335,7 @@ def detect_provider_from_id(model_id: str) -> str:
 # Function to register a new model
 async def register_new_model(model_data: Dict[str, Any]) -> bool:
     """
-    Register a new model in the models.json configuration file.
+    Register a new model with the Provider Manager.
     
     Args:
         model_data: Dictionary containing the model information
@@ -357,32 +344,8 @@ async def register_new_model(model_data: Dict[str, Any]) -> bool:
         True if the model was registered successfully, False otherwise
     """
     try:
-        models_config_path = os.path.join(os.path.dirname(__file__), "config", "models.json")
-        
-        # Create config directory if it doesn't exist
-        os.makedirs(os.path.dirname(models_config_path), exist_ok=True)
-        
-        # Load existing config or create a new one
-        if os.path.exists(models_config_path):
-            with open(models_config_path, "r") as f:
-                config = json.load(f)
-        else:
-            config = {"models": []}
-        
-        # Check if model already exists
-        for existing_model in config["models"]:
-            if existing_model["id"] == model_data["id"]:
-                # Model already exists, no need to add it again
-                return True
-        
-        # Add new model
-        config["models"].append(model_data)
-        
-        # Save updated config
-        with open(models_config_path, "w") as f:
-            json.dump(config, f, indent=2)
-        
-        return True
+        # Use the provider manager to register the model
+        return storage.provider_manager.register_model(model_data)
     except Exception as e:
         storage.logger.error(f"Error registering new model: {str(e)}")
         return False

@@ -7,7 +7,6 @@ from datetime import datetime
 from typing import List, Dict, Optional, Any, Tuple, Union
 import uuid
 import os
-import litellm
 from sqlalchemy import (
     create_engine, Column, String, Integer, Float, 
     DateTime, JSON, Text, and_, or_, between
@@ -166,9 +165,10 @@ class JudgeStorage:
             self.logger.error(f"Failed to initialize PostgreSQL: {str(e)}")
             raise
         
-        # Configure LiteLLM
-        litellm.verbose = False
-        self.logger.info("LiteLLM initialized")
+        # Initialize provider manager
+        from .provider_manager import ProviderManager
+        self.provider_manager = ProviderManager()
+        self.logger.info("Provider Manager initialized")
 
     async def run_query_with_llm(
         self, 
@@ -179,7 +179,7 @@ class JudgeStorage:
         model_provider: Optional[str] = None
     ) -> Dict[str, Any]:
         """
-        Run a query through LiteLLM and store the output.
+        Run a query through the LLM providers and store the output.
         
         Args:
             query: Query text to run
@@ -193,45 +193,52 @@ class JudgeStorage:
         """
         self.logger.info(f"Running query with model {model_id}: {query[:50]}...")
         try:
-            # Format model string for LiteLLM based on provider
-            litellm_model = model_id
-            if model_provider:
-                litellm_model = f"{model_provider}/{model_id}"
-                self.logger.info(f"Using provider-specific model format: {litellm_model}")
-
-            # Run query through LiteLLM
-            response = await litellm.acompletion(
-                model=litellm_model,
-                messages=[{"role": "user", "content": query}],
-                temperature=float(os.environ.get("LITELLM_MODEL_DEFAULT_TEMPERATURE", "0.7"))
-            )
+            # Prepare messages for the model
+            messages = [{"role": "user", "content": query}]
             
-            output_text = response.choices[0].message.content
-            output_id = str(uuid.uuid4())
+            # Get default temperature from environment
+            temperature = float(os.environ.get("MODEL_DEFAULT_TEMPERATURE", "0.7"))
             
-            # Prepare metadata
-            output_metadata = {
-                "model_id": model_id,
-                "theme": theme,
-                "query": query,
-                "timestamp": datetime.utcnow().isoformat(),
-                **(metadata or {})
-            }
-            
-            # Store in ChromaDB
-            self.collection.add(
-                documents=[output_text],
-                metadatas=[output_metadata],
-                ids=[output_id]
-            )
-            
-            self.logger.info(f"Stored LLM output with ID {output_id}")
-            
-            return {
-                "id": output_id,
-                "output": output_text,
-                "metadata": output_metadata
-            }
+            # Generate completion using Provider Manager
+            try:
+                completion = await self.provider_manager.complete(
+                    model_id=model_id,
+                    messages=messages,
+                    temperature=temperature
+                )
+                
+                output_text = completion.get("content", "")
+                output_id = completion.get("id", str(uuid.uuid4()))
+                
+                # Prepare metadata
+                output_metadata = {
+                    "model_id": model_id,
+                    "theme": theme,
+                    "query": query,
+                    "timestamp": datetime.utcnow().isoformat(),
+                    "provider": completion.get("provider", model_provider),
+                    **(metadata or {})
+                }
+                
+                # Store in ChromaDB
+                self.collection.add(
+                    documents=[output_text],
+                    metadatas=[output_metadata],
+                    ids=[output_id]
+                )
+                
+                self.logger.info(f"Stored LLM output with ID {output_id}")
+                
+                return {
+                    "id": output_id,
+                    "output": output_text,
+                    "metadata": output_metadata
+                }
+            except Exception as e:
+                # Log the error
+                self.logger.error(f"Error generating completion: {str(e)}")
+                raise ValueError(f"Error generating completion: {str(e)}")
+                
         except Exception as e:
             self.logger.error(f"Error running query with LLM: {str(e)}")
             raise
@@ -289,13 +296,17 @@ class JudgeStorage:
             # Get evaluation from judge LLM
             self.logger.info(f"Using judge model {judge_model}")
             try:
-                response = await litellm.acompletion(
-                    model=judge_model,
-                    messages=[{"role": "user", "content": formatted_prompt}]
+                # Create message for evaluation
+                eval_messages = [{"role": "user", "content": formatted_prompt}]
+                
+                # Generate evaluation using Provider Manager
+                response = await self.provider_manager.complete(
+                    model_id=judge_model,
+                    messages=eval_messages
                 )
                 
                 # Extract score
-                score_text = response.choices[0].message.content.strip()
+                score_text = response.get("content", "").strip()
                 
                 # Try to parse the score, handle potential non-numeric responses
                 try:
@@ -448,29 +459,17 @@ class JudgeStorage:
             List of available models with their details
         """
         try:
-            # Get models from LiteLLM
-            models = await litellm.get_model_list()
-            
-            # Format model information
-            model_info = []
-            for model in models:
-                model_info.append({
-                    "id": model.id,
-                    "name": model.display_name if hasattr(model, 'display_name') else model.id,
-                    "provider": model.provider if hasattr(model, 'provider') else "unknown",
-                    "is_judge_compatible": model.id.startswith("gpt-") or "claude" in model.id
-                })
-            
-            return model_info
+            # Get models from Provider Manager
+            models = await self.provider_manager.get_models()
+            return models
         except Exception as e:
             self.logger.error(f"Error listing available models: {str(e)}")
-            # Return default models if LiteLLM can't provide the list
-            # Include the chatgpt-4o-latest model that was used in the evaluation
+            # Return default models if Provider Manager can't provide the list
             return [
                 {"id": "gpt-4", "name": "GPT-4", "provider": "openai", "is_judge_compatible": True},
                 {"id": "gpt-3.5-turbo", "name": "GPT-3.5 Turbo", "provider": "openai", "is_judge_compatible": True},
                 {"id": "claude-3-opus-20240229", "name": "Claude 3 Opus", "provider": "anthropic", "is_judge_compatible": True},
                 {"id": "claude-3-sonnet-20240229", "name": "Claude 3 Sonnet", "provider": "anthropic", "is_judge_compatible": True},
-                {"id": "gemini-pro", "name": "Gemini Pro", "provider": "google", "is_judge_compatible": False},
+                {"id": "gemini-pro", "name": "Gemini Pro", "provider": "gemini", "is_judge_compatible": False},
                 {"id": "chatgpt-4o-latest", "name": "ChatGPT-4o (Latest)", "provider": "openai", "is_judge_compatible": True}
             ]

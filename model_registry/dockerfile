@@ -1,0 +1,27 @@
+FROM python:3.11-slim
+
+WORKDIR /app
+
+# Copy requirements first for better caching
+COPY ./model_registry/requirements.txt /app/requirements.txt
+
+# Install dependencies
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy shared directory first
+COPY ./shared /app/shared
+
+# Copy the model registry code
+COPY ./model_registry /app/model_registry
+
+# Create necessary directories for default config if they don't exist
+RUN mkdir -p /app/model_registry/config
+
+# Set environment variables
+ENV PYTHONPATH="/app:${PYTHONPATH}"
+
+# Expose the port
+EXPOSE 8000
+
+# Run the service using Uvicorn
+CMD ["uvicorn", "model_registry.api:app", "--host", "0.0.0.0", "--port", "8000"]

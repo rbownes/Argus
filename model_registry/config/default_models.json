@@ -1,0 +1,81 @@
+[
+  {
+    "id": "gpt-4",
+    "name": "GPT-4",
+    "provider_id": "openai",
+    "is_judge_compatible": true,
+    "capabilities": ["chat", "completion"],
+    "config": {
+      "temperature_default": 0.7,
+      "max_tokens_default": 1024
+    }
+  },
+  {
+    "id": "gpt-3.5-turbo",
+    "name": "GPT-3.5 Turbo",
+    "provider_id": "openai",
+    "is_judge_compatible": true,
+    "capabilities": ["chat", "completion"],
+    "config": {
+      "temperature_default": 0.7,
+      "max_tokens_default": 1024
+    }
+  },
+  {
+    "id": "claude-3-opus-20240229",
+    "name": "Claude 3 Opus",
+    "provider_id": "anthropic",
+    "is_judge_compatible": true,
+    "capabilities": ["chat", "completion"],
+    "config": {
+      "temperature_default": 0.7,
+      "max_tokens_default": 4096
+    }
+  },
+  {
+    "id": "claude-3-sonnet-20240229",
+    "name": "Claude 3 Sonnet",
+    "provider_id": "anthropic",
+    "is_judge_compatible": true,
+    "capabilities": ["chat", "completion"],
+    "config": {
+      "temperature_default": 0.7,
+      "max_tokens_default": 4096
+    }
+  },
+  {
+    "id": "gemini-pro",
+    "name": "Gemini Pro",
+    "provider_id": "gemini",
+    "is_judge_compatible": false,
+    "capabilities": ["chat", "completion"],
+    "config": {
+      "temperature_default": 0.7,
+      "max_tokens_default": 2048,
+      "api_format": "models/{model_id}:generateContent"
+    }
+  },
+  {
+    "id": "gemini-2.5-pro-exp-03-25",
+    "name": "Gemini 2.5 Pro Experimental",
+    "provider_id": "gemini",
+    "is_judge_compatible": false,
+    "capabilities": ["chat", "completion"],
+    "config": {
+      "temperature_default": 0.7,
+      "max_tokens_default": 2048,
+      "api_format": "models/{model_id}:generateContent"
+    }
+  },
+  {
+    "id": "gpt-4o-mini-2024-07-18",
+    "name": "GPT-4o Mini",
+    "provider_id": "openai",
+    "is_judge_compatible": true,
+    "capabilities": ["chat", "completion"],
+    "config": {
+      "temperature_default": 0.7,
+      "max_tokens_default": 4096
+    }
+  }
+]

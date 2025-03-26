@@ -1,0 +1,3 @@
+"""
+Model adapter package initialization.
+"""
