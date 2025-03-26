@@ -12,6 +12,7 @@ const ModelComparison = () => {
     endDate: new Date(),
     selectedModels: [],
     selectedThemes: [],
+    selectedProviders: [],
   })
 
   // Query model comparison data
@@ -22,6 +23,7 @@ const ModelComparison = () => {
       endDate: filters.endDate,
       models: filters.selectedModels.length > 0 ? filters.selectedModels : undefined,
       themes: filters.selectedThemes.length > 0 ? filters.selectedThemes : undefined,
+      providers: filters.selectedProviders.length > 0 ? filters.selectedProviders : undefined,
     }),
     {
       refetchInterval: 5 * 60 * 1000, // Refetch every 5 minutes
@@ -88,6 +90,33 @@ const ModelComparison = () => {
   }
   
   const availableThemes = filterOptionsQuery.data?.themes || []
+  
+  // Extract unique providers from models
+  const availableProviders = Array.from(
+    new Set(
+      modelsFromApi
+        .filter(model => {
+          // Find full model object that includes provider information
+          const modelObj = filterOptionsQuery.data?.models?.find(m => 
+            typeof m === 'object' && m.id === model
+          )
+          return modelObj && modelObj.provider
+        })
+        .map(model => {
+          // Get provider from model object
+          const modelObj = filterOptionsQuery.data?.models?.find(m => 
+            typeof m === 'object' && m.id === model
+          )
+          return modelObj?.provider
+        })
+        .filter(Boolean) // Remove undefined values
+    )
+  )
+  
+  // Add default providers if none are found
+  if (!availableProviders.length) {
+    availableProviders.push('openai', 'anthropic', 'google')
+  }
 
   // Handle filter changes
   const handleModelFilterChange = (e) => {
@@ -109,6 +138,17 @@ const ModelComparison = () => {
     setFilters((prev) => ({
       ...prev,
       selectedThemes: selectedOptions,
+    }))
+  }
+  
+  const handleProviderFilterChange = (e) => {
+    const selectedOptions = Array.from(
+      e.target.selectedOptions,
+      (option) => option.value
+    )
+    setFilters((prev) => ({
+      ...prev,
+      selectedProviders: selectedOptions,
     }))
   }
 
@@ -145,7 +185,7 @@ const ModelComparison = () => {
       {/* Filters */}
       <div className="card mb-6">
         <h2 className="text-xl font-semibold mb-4">Filters</h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <div className="form-group">
             <label className="form-label">Date Range</label>
             <select 
@@ -171,6 +211,26 @@ const ModelComparison = () => {
               {availableModels.map((model) => (
                 <option key={model} value={model}>
                   {model}
+                </option>
+              ))}
+            </select>
+            <div className="text-xs text-gray-500 mt-1">
+              Hold Ctrl/Cmd to select multiple
+            </div>
+          </div>
+          
+          <div className="form-group">
+            <label className="form-label">Providers</label>
+            <select 
+              className="form-control" 
+              multiple 
+              size={3}
+              onChange={handleProviderFilterChange}
+              value={filters.selectedProviders}
+            >
+              {availableProviders.map((provider) => (
+                <option key={provider} value={provider}>
+                  {provider}
                 </option>
               ))}
             </select>
@@ -246,6 +306,7 @@ const ModelComparison = () => {
             <thead className="bg-gray-50">
               <tr>
                 <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Model</th>
+                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Provider</th>
                 <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Theme</th>
                 <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Avg. Score</th>
                 <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Min Score</th>
@@ -257,6 +318,7 @@ const ModelComparison = () => {
               {rawData.map((row, index) => (
                 <tr key={index}>
                   <td className="px-4 py-2 text-sm font-medium text-gray-900">{row.model_id}</td>
+                  <td className="px-4 py-2 text-sm text-gray-500">{row.provider || 'unknown'}</td>
                   <td className="px-4 py-2 text-sm text-gray-500">{row.theme}</td>
                   <td className="px-4 py-2 text-sm text-gray-500">{row.avg_score?.toFixed(2)}</td>
                   <td className="px-4 py-2 text-sm text-gray-500">{row.min_score?.toFixed(2)}</td>
@@ -266,7 +328,7 @@ const ModelComparison = () => {
               ))}
               {rawData.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="px-4 py-2 text-sm text-gray-500 text-center">No data available</td>
+                  <td colSpan={7} className="px-4 py-2 text-sm text-gray-500 text-center">No data available</td>
                 </tr>
               )}
             </tbody>

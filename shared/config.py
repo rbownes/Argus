@@ -53,7 +53,7 @@ class ServiceConfig(BaseModel):
         # LLM config
         llm_config = LLMConfig(
             litellm_api_key=os.environ.get("LITELLM_API_KEY"),
-            google_api_key=os.environ.get("GOOGLE_API_KEY"),
+            google_api_key=os.environ.get("GEMINI_API_KEY"),
             anthropic_api_key=os.environ.get("ANTHROPIC_API_KEY"),
             default_temperature=float(os.environ.get("LITELLM_MODEL_DEFAULT_TEMPERATURE", "0.7"))
         )

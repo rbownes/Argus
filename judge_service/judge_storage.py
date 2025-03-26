@@ -175,7 +175,8 @@ class JudgeStorage:
         query: str, 
         model_id: str,
         theme: str,
-        metadata: Optional[Dict] = None
+        metadata: Optional[Dict] = None,
+        model_provider: Optional[str] = None
     ) -> Dict[str, Any]:
         """
         Run a query through LiteLLM and store the output.
@@ -185,15 +186,22 @@ class JudgeStorage:
             model_id: ID of the LLM model to use
             theme: Theme or category of the query
             metadata: Additional metadata
+            model_provider: Provider of the LLM model (e.g., 'google', 'anthropic', 'openai')
             
         Returns:
             Dictionary with output information
         """
         self.logger.info(f"Running query with model {model_id}: {query[:50]}...")
         try:
+            # Format model string for LiteLLM based on provider
+            litellm_model = model_id
+            if model_provider:
+                litellm_model = f"{model_provider}/{model_id}"
+                self.logger.info(f"Using provider-specific model format: {litellm_model}")
+
             # Run query through LiteLLM
             response = await litellm.acompletion(
-                model=model_id,
+                model=litellm_model,
                 messages=[{"role": "user", "content": query}],
                 temperature=float(os.environ.get("LITELLM_MODEL_DEFAULT_TEMPERATURE", "0.7"))
             )

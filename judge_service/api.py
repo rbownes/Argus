@@ -43,6 +43,7 @@ class QueryEvaluationRequest(BaseModel):
     theme: str = Field(..., description="Theme or category of the query")
     evaluation_prompt_ids: List[str] = Field(..., description="List of evaluation prompt IDs to use")
     judge_model: str = Field("gpt-4", description="LLM model to use for evaluation")
+    model_provider: Optional[str] = Field(None, description="Provider of the LLM model (e.g., 'google', 'anthropic', 'openai')")
     metadata: Optional[Dict] = Field(default=None, description="Additional metadata")
     
     @validator('evaluation_prompt_ids')
@@ -57,6 +58,7 @@ class ThemeEvaluationRequest(BaseModel):
     model_id: str = Field(..., description="ID of the LLM model to use")
     evaluation_prompt_ids: List[str] = Field(..., description="List of evaluation prompt IDs to use")
     judge_model: str = Field("gpt-4", description="LLM model to use for evaluation")
+    model_provider: Optional[str] = Field(None, description="Provider of the LLM model (e.g., 'google', 'anthropic', 'openai')")
     limit: int = Field(10, ge=1, le=100, description="Maximum number of queries to evaluate")
     metadata: Optional[Dict] = Field(default=None, description="Additional metadata")
     
@@ -94,7 +96,8 @@ async def evaluate_single_query(request: QueryEvaluationRequest):
                 query=request.query,
                 model_id=request.model_id,
                 theme=request.theme,
-                metadata=request.metadata
+                metadata=request.metadata,
+                model_provider=request.model_provider
             )
         except Exception as e:
             raise ApiError(
@@ -193,6 +196,7 @@ async def evaluate_theme_queries(request: ThemeEvaluationRequest):
                 theme=request.theme,
                 evaluation_prompt_ids=request.evaluation_prompt_ids,
                 judge_model=request.judge_model,
+                model_provider=request.model_provider,
                 metadata={
                     "query_id": query_data["id"],
                     **(request.metadata or {})

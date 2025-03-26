@@ -11,11 +11,12 @@ Panopticon addresses the challenge of objectively measuring and comparing LLM pe
 
 1. **Structured Evaluation Framework**: Organize evaluation queries by themes and taxonomies (e.g., reasoning, creativity, safety)
 2. **Multi-Model Assessment**: Compare performance across different LLMs (OpenAI, Anthropic, Google, etc.)
-3. **Customizable Metrics**: Define and store evaluation criteria tailored to specific use cases
-4. **Automated Judgment**: Leverage LLMs themselves as judges with well-crafted evaluation prompts
-5. **Comprehensive Analytics**: Visualize performance trends, comparisons, and detailed results
-6. **Semantic Search**: Find similar queries and evaluation metrics through vector embeddings
-7. **Extensible Architecture**: Easily integrate new models, evaluation methods, and visualization types
+3. **Model Provider Support**: Integrate with various model providers using a standardized interface
+4. **Customizable Metrics**: Define and store evaluation criteria tailored to specific use cases
+5. **Automated Judgment**: Leverage LLMs themselves as judges with well-crafted evaluation prompts
+6. **Comprehensive Analytics**: Visualize performance trends, comparisons, and detailed results
+7. **Semantic Search**: Find similar queries and evaluation metrics through vector embeddings
+8. **Extensible Architecture**: Easily integrate new models, evaluation methods, and visualization types
 
 Panopticon helps machine learning teams, AI safety researchers, and organizations developing LLM-powered applications to:
 
@@ -24,6 +25,7 @@ Panopticon helps machine learning teams, AI safety researchers, and organization
 - Detect regressions in specific capability areas
 - Make data-driven decisions about which models to deploy for particular use cases
 - Optimize prompting strategies based on evaluation feedback
+- Compare performance across different model providers
 
 ## System Architecture
 
@@ -113,7 +115,8 @@ Each service that needs to communicate with other services has client wrappers t
   - PostgreSQL for structured result storage
   - ChromaDB for storing LLM outputs
 - **Key Features**:
-  - Model-agnostic evaluation (supports OpenAI, Anthropic, etc.)
+  - Multi-provider support (OpenAI, Anthropic, Google)
+  - Provider-specific model formatting
   - Standardized scoring (1-10 scale)
   - Batch processing by theme
   - Comprehensive filtering options
@@ -121,6 +124,7 @@ Each service that needs to communicate with other services has client wrappers t
   - `POST /api/v1/evaluate/query` - Evaluate a single query
   - `POST /api/v1/evaluate/theme` - Evaluate all queries of a theme
   - `GET /api/v1/results` - Get evaluation results with filtering
+  - `GET /api/v1/models` - List available models for evaluation
 
 #### 4. Visualization Service
 - **Purpose**: Visualizes evaluation results and provides an interactive dashboard
@@ -131,7 +135,8 @@ Each service that needs to communicate with other services has client wrappers t
   - Direct PostgreSQL connection for analytics queries
 - **Key Features**:
   - Performance timeline charts
-  - Model comparison visualizations
+  - Model comparison visualizations 
+  - Provider filtering and comparison
   - Theme analysis views
   - Detailed results exploration
   - WebSocket support for real-time updates
@@ -141,6 +146,7 @@ Each service that needs to communicate with other services has client wrappers t
   - `GET /api/v1/dashboard/models` - Get model comparison data
   - `GET /api/v1/dashboard/themes` - Get theme analysis data
   - `GET /api/v1/dashboard/results` - Get detailed results with pagination
+  - `GET /api/v1/dashboard/filters` - Get available filter options
 
 #### 5. Main Application
 - **Purpose**: Serves as entry point and API gateway
@@ -184,7 +190,7 @@ Each service that needs to communicate with other services has client wrappers t
 
 - **Collection: llm_outputs**
   - Documents: LLM-generated responses
-  - Metadata: Model ID, theme, query, timestamp
+  - Metadata: Model ID, provider, theme, query, timestamp
   - Embeddings: Vector representations for semantic search
 
 ## How to Use This Repository
@@ -272,13 +278,13 @@ Each service that needs to communicate with other services has client wrappers t
    Define evaluation criteria for scoring responses (e.g., "accuracy", "clarity", "conciseness").
    
 3. **Configure Models to Test**:
-   Determine which LLM models you want to evaluate (e.g., "gpt-4", "claude-3-opus", "gemini-pro").
+   Determine which LLM models and providers you want to evaluate (e.g., "gpt-4" from OpenAI, "claude-3-opus" from Anthropic, "gemini-pro" from Google).
    
 4. **Run Evaluations**:
    Execute evaluations for your queries against the selected models using your evaluation criteria.
    
 5. **Analyze Results**:
-   Use the visualization dashboard to explore and compare performance.
+   Use the visualization dashboard to explore and compare performance across models and providers.
 
 ## End-to-End Workflow Examples
 
@@ -347,7 +353,8 @@ curl -X POST http://localhost:8003/api/v1/evaluate/theme \
     "theme": "science_explanations",
     "model_id": "gpt-4o-mini-2024-07-18",
     "evaluation_prompt_ids": ["clarity", "accuracy"],
-    "judge_model": "gpt-4o-mini-2024-07-18"
+    "judge_model": "gpt-4o-mini-2024-07-18",
+    "model_provider": "openai"
   }'
 ```
 
@@ -361,9 +368,11 @@ curl -X POST http://localhost:8003/api/v1/evaluate/theme \
   -H "X-API-Key: dev_api_key_for_testing" \
   -d '{
     "theme": "science_explanations",
-    "model_id": "gpt-4",
+    "model_id": "gemini-2.5-pro-exp-03-25",
     "evaluation_prompt_ids": ["clarity", "accuracy"],
-    "judge_model": "gpt-4"
+    "judge_model": "gpt-4o-mini-2024-07-18",
+    "model_provider": "gemini",
+    "judge_model_provider": "openai"
   }'
 ```
 
@@ -375,9 +384,100 @@ Access the visualization dashboard to see performance changes over time:
 - Filter for your model (gpt-4) and theme (science_explanations)
 - Compare scores across different evaluation dates
 
-### Example 2: Comparing Two Models Across Multiple Themes
+### Example 2: Comparing Models Across Different Providers
 
-This workflow shows how to benchmark two different models against each other.
+This workflow shows how to benchmark models from different providers against each other.
+
+#### 1. Store Test Queries for a Theme
+
+Create queries for the reasoning tasks theme:
+
+```bash
+curl -X POST http://localhost:8001/api/v1/queries \
+  -H "Content-Type: application/json" \
+  -H "X-API-Key: dev_api_key_for_testing" \
+  -d '{
+    "query": "A bat and ball cost $1.10 in total. The bat costs $1.00 more than the ball. How much does the ball cost?",
+    "theme": "reasoning_tasks",
+    "metadata": {
+      "type": "mathematical",
+      "difficulty": "medium"
+    }
+  }'
+```
+
+#### 2. Create Evaluation Metrics
+
+```bash
+curl -X POST http://localhost:8002/api/v1/evaluation-metrics \
+  -H "Content-Type: application/json" \
+  -H "X-API-Key: dev_api_key_for_testing" \
+  -d '{
+    "prompt": "Evaluate the correctness of this answer. Is the mathematical reasoning sound and is the final answer correct? Rate on a scale of 1-10.",
+    "metric_type": "correctness",
+    "metadata": {
+      "domain": "mathematics"
+    }
+  }'
+```
+
+#### 3. Run Evaluation for OpenAI Model
+
+```bash
+curl -X POST http://localhost:8003/api/v1/evaluate/theme \
+  -H "Content-Type: application/json" \
+  -H "X-API-Key: dev_api_key_for_testing" \
+  -d '{
+    "theme": "reasoning_tasks",
+    "model_id": "gpt-4-turbo",
+    "model_provider": "openai",
+    "evaluation_prompt_ids": ["correctness"],
+    "judge_model": "gpt-4"
+  }'
+```
+
+#### 4. Run Evaluation for Anthropic Model
+
+```bash
+curl -X POST http://localhost:8003/api/v1/evaluate/theme \
+  -H "Content-Type: application/json" \
+  -H "X-API-Key: dev_api_key_for_testing" \
+  -d '{
+    "theme": "reasoning_tasks",
+    "model_id": "claude-3-opus-20240229",
+    "model_provider": "anthropic",
+    "evaluation_prompt_ids": ["correctness"],
+    "judge_model": "gpt-4"
+  }'
+```
+
+#### 5. Run Evaluation for Google Model
+
+```bash
+curl -X POST http://localhost:8003/api/v1/evaluate/theme \
+  -H "Content-Type: application/json" \
+  -H "X-API-Key: dev_api_key_for_testing" \
+  -d '{
+    "theme": "reasoning_tasks",
+    "model_id": "gemini-2.5-pro-exp-03-25",
+    "model_provider": "google",
+    "evaluation_prompt_ids": ["correctness"],
+    "judge_model": "gpt-4"
+  }'
+```
+
+#### 6. Compare Model Performance
+
+Access the visualization dashboard:
+- Navigate to http://localhost:8004
+- Select the "Model Comparison" view
+- Filter by providers and models
+- View the comparative performance of models from different providers
+- Analyze detailed results in the data table
+
+### Example 3: Comparing Performances Across Multiple Themes
+
+This workflow shows how to benchmark models across different task types.
 
 #### 1. Store Test Queries for Multiple Themes
 
@@ -387,7 +487,7 @@ Create queries for different themes:
 ```bash
 curl -X POST http://localhost:8001/api/v1/queries \
   -H "Content-Type: application/json" \
-  -H "X-API-Key: your_api_key_here" \
+  -H "X-API-Key: dev_api_key_for_testing" \
   -d '{
     "query": "A bat and ball cost $1.10 in total. The bat costs $1.00 more than the ball. How much does the ball cost?",
     "theme": "reasoning_tasks",
@@ -402,7 +502,7 @@ curl -X POST http://localhost:8001/api/v1/queries \
 ```bash
 curl -X POST http://localhost:8001/api/v1/queries \
   -H "Content-Type: application/json" \
-  -H "X-API-Key: your_api_key_here" \
+  -H "X-API-Key: dev_api_key_for_testing" \
   -d '{
     "query": "Write a short story about a robot discovering what it means to be human.",
     "theme": "creative_writing",
@@ -417,7 +517,7 @@ curl -X POST http://localhost:8001/api/v1/queries \
 ```bash
 curl -X POST http://localhost:8001/api/v1/queries \
   -H "Content-Type: application/json" \
-  -H "X-API-Key: your_api_key_here" \
+  -H "X-API-Key: dev_api_key_for_testing" \
   -d '{
     "query": "Summarize the following research paper in 3-4 sentences: [paper content here]",
     "theme": "summarization",
@@ -436,7 +536,7 @@ Create metrics for each theme:
 ```bash
 curl -X POST http://localhost:8002/api/v1/evaluation-metrics \
   -H "Content-Type: application/json" \
-  -H "X-API-Key: your_api_key_here" \
+  -H "X-API-Key: dev_api_key_for_testing" \
   -d '{
     "prompt": "Evaluate the correctness of this answer. Is the mathematical reasoning sound and is the final answer correct? Rate on a scale of 1-10.",
     "metric_type": "correctness",
@@ -450,7 +550,7 @@ curl -X POST http://localhost:8002/api/v1/evaluation-metrics \
 ```bash
 curl -X POST http://localhost:8002/api/v1/evaluation-metrics \
   -H "Content-Type: application/json" \
-  -H "X-API-Key: your_api_key_here" \
+  -H "X-API-Key: dev_api_key_for_testing" \
   -d '{
     "prompt": "Evaluate this story on creativity and emotional impact. Does it present original ideas and evoke emotion? Rate on a scale of 1-10.",
     "metric_type": "creativity",
@@ -464,7 +564,7 @@ curl -X POST http://localhost:8002/api/v1/evaluation-metrics \
 ```bash
 curl -X POST http://localhost:8002/api/v1/evaluation-metrics \
   -H "Content-Type: application/json" \
-  -H "X-API-Key: your_api_key_here" \
+  -H "X-API-Key: dev_api_key_for_testing" \
   -d '{
     "prompt": "Evaluate this summary on conciseness and completeness. Does it capture the key points of the original text while remaining brief? Rate on a scale of 1-10.",
     "metric_type": "summary_quality",
@@ -474,72 +574,130 @@ curl -X POST http://localhost:8002/api/v1/evaluation-metrics \
   }'
 ```
 
-#### 3. Run Evaluation for First Model
-
-Run evaluations for all themes with the first model:
+#### 3. Run Evaluations for Each Theme With Selected Models
 
 ```bash
-# Evaluate reasoning tasks
+# Evaluate reasoning tasks for OpenAI model
 curl -X POST http://localhost:8003/api/v1/evaluate/theme \
   -H "Content-Type: application/json" \
-  -H "X-API-Key: your_api_key_here" \
+  -H "X-API-Key: dev_api_key_for_testing" \
   -d '{
     "theme": "reasoning_tasks",
     "model_id": "gpt-4",
+    "model_provider": "openai",
     "evaluation_prompt_ids": ["correctness"],
     "judge_model": "claude-3-opus-20240229"
   }'
 
-# Evaluate creative writing
+# Evaluate creative writing for OpenAI model
 curl -X POST http://localhost:8003/api/v1/evaluate/theme \
   -H "Content-Type: application/json" \
-  -H "X-API-Key: your_api_key_here" \
+  -H "X-API-Key: dev_api_key_for_testing" \
   -d '{
     "theme": "creative_writing",
     "model_id": "gpt-4",
+    "model_provider": "openai",
     "evaluation_prompt_ids": ["creativity"],
     "judge_model": "claude-3-opus-20240229"
   }'
 
-# Evaluate summarization
-curl -X POST http://localhost:8003/api/v1/evaluate/theme \
-  -H "Content-Type: application/json" \
-  -H "X-API-Key: your_api_key_here" \
-  -d '{
-    "theme": "summarization",
-    "model_id": "gpt-4",
-    "evaluation_prompt_ids": ["summary_quality"],
-    "judge_model": "claude-3-opus-20240229"
-  }'
+# Similar requests for other themes and models
 ```
 
-#### 4. Run Evaluation for Second Model
-
-Run the same evaluations for the second model:
-
-```bash
-# Evaluate reasoning tasks
-curl -X POST http://localhost:8003/api/v1/evaluate/theme \
-  -H "Content-Type: application/json" \
-  -H "X-API-Key: your_api_key_here" \
-  -d '{
-    "theme": "reasoning_tasks",
-    "model_id": "claude-3-sonnet-20240229",
-    "evaluation_prompt_ids": ["correctness"],
-    "judge_model": "claude-3-opus-20240229"
-  }'
-
-# Similar requests for other themes
-```
-
-#### 5. Compare Model Performance
+#### 4. Compare Performance Across Themes
 
 Access the visualization dashboard:
 - Navigate to http://localhost:8004
-- Select the "Model Comparison" view
-- Select both models (gpt-4 and claude-3-sonnet-20240229)
+- Select the "Theme Analysis" or "Model Comparison" view
+- Filter by the models and providers you've evaluated
 - View radar chart showing relative performance across themes
 - Explore bar charts comparing specific metrics
+
+### Example 4: Cross-Provider Evaluation
+
+This workflow demonstrates how to use models from different providers together, with one provider's model evaluating another provider's model. This can help detect biases in evaluation and provide more objective comparison across model ecosystems.
+
+#### 1. Setup API Keys
+
+First, ensure you have API keys for all providers you want to use in your `.env` file:
+
+```
+# LLM API Keys
+OPENAI_API_KEY=your_openai_api_key_here
+GOOGLE_API_KEY=your_gemini_api_key_here
+ANTHROPIC_API_KEY=your_anthropic_api_key_here
+```
+
+#### 2. Google Gemini Model Evaluated by OpenAI GPT
+
+This example shows a Google Gemini model being evaluated by an OpenAI GPT model:
+
+```bash
+curl -X POST http://localhost:8003/api/v1/evaluate/theme \
+  -H "Content-Type: application/json" \
+  -H "X-API-Key: dev_api_key_for_testing" \
+  -d '{
+    "theme": "science_explanations",
+    "model_id": "gemini-1.5-pro",
+    "model_provider": "google",
+    "evaluation_prompt_ids": ["clarity", "accuracy", "completeness"],
+    "judge_model": "gpt-4-0125-preview",
+    "limit": 5
+  }'
+```
+
+#### 3. OpenAI GPT Model Evaluated by Google Gemini
+
+Here's the reverse - an OpenAI model evaluated by a Google model:
+
+```bash
+curl -X POST http://localhost:8003/api/v1/evaluate/theme \
+  -H "Content-Type: application/json" \
+  -H "X-API-Key: dev_api_key_for_testing" \
+  -d '{
+    "theme": "code_generation",
+    "model_id": "gpt-4-turbo",
+    "model_provider": "openai",
+    "evaluation_prompt_ids": ["code_correctness", "efficiency"],
+    "judge_model": "gemini-1.5-pro",
+    "judge_model_provider": "google",
+    "limit": 5
+  }'
+```
+
+#### 4. Anthropic Claude Model Evaluated by OpenAI GPT
+
+This example shows an Anthropic Claude model being evaluated by an OpenAI model:
+
+```bash
+curl -X POST http://localhost:8003/api/v1/evaluate/theme \
+  -H "Content-Type: application/json" \
+  -H "X-API-Key: dev_api_key_for_testing" \
+  -d '{
+    "theme": "creative_writing",
+    "model_id": "claude-3-opus-20240229",
+    "model_provider": "anthropic",
+    "evaluation_prompt_ids": ["creativity", "narrative_quality"],
+    "judge_model": "gpt-4-0125-preview",
+    "limit": 5
+  }'
+```
+
+#### 5. Benefits of Cross-Provider Evaluation
+
+- **Reduced Evaluation Bias**: Models may be biased toward scoring their own "family" of models higher
+- **Broader Perspective**: Different judge models may focus on different aspects of quality
+- **Fair Comparisons**: Using a consistent judge model across different providers' models
+- **Provider Strengths**: Identify which providers excel at which types of tasks
+- **Judge Comparison**: Compare how different judge models evaluate the same outputs
+
+#### 6. Analyzing Cross-Provider Results
+
+Use the visualization dashboard to:
+- Compare scores from different judge models on the same outputs
+- See how different provider models perform when evaluated by the same judge
+- Filter results by both model provider and judge provider
+- Identify potential biases in evaluation across provider ecosystems
 
 ## Example Prompts and Evaluation Metrics
 

@@ -53,13 +53,14 @@ export const getPerformanceTimeline = async (filters = {}) => {
 }
 
 export const getModelComparison = async (filters = {}) => {
-  const { startDate, endDate, models, themes } = filters
+  const { startDate, endDate, models, themes, providers } = filters
   
   const params = new URLSearchParams()
   if (startDate) params.append('start_date', startDate.toISOString())
   if (endDate) params.append('end_date', endDate.toISOString())
   if (models?.length) params.append('models', models.join(','))
   if (themes?.length) params.append('themes', themes.join(','))
+  if (providers?.length) params.append('providers', providers.join(','))
   
   const { data } = await api.get(`/dashboard/models?${params.toString()}`)
   return data
