@@ -1,0 +1,40 @@
+{
+  "models": [
+    {
+      "id": "gpt-4",
+      "name": "GPT-4",
+      "provider": "openai",
+      "is_judge_compatible": true
+    },
+    {
+      "id": "gpt-3.5-turbo",
+      "name": "GPT-3.5 Turbo",
+      "provider": "openai",
+      "is_judge_compatible": true
+    },
+    {
+      "id": "claude-3-opus-20240229",
+      "name": "Claude 3 Opus",
+      "provider": "anthropic",
+      "is_judge_compatible": true
+    },
+    {
+      "id": "claude-3-sonnet-20240229",
+      "name": "Claude 3 Sonnet",
+      "provider": "anthropic",
+      "is_judge_compatible": true
+    },
+    {
+      "id": "gemini-pro",
+      "name": "Gemini Pro",
+      "provider": "google",
+      "is_judge_compatible": false
+    },
+    {
+      "id": "chatgpt-4o-latest",
+      "name": "ChatGPT-4o (Latest)",
+      "provider": "openai",
+      "is_judge_compatible": true
+    }
+  ]
+}

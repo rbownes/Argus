@@ -121,16 +121,74 @@ export const getFilterOptions = async () => {
     const filtersResponse = await api.get('/dashboard/filters')
     const filters = filtersResponse.data || {}
     
-    // Combine the models from both sources
+    // Extract provider information from models
+    const providers = [...new Set(
+      judgeModels
+        .filter(model => model.provider)
+        .map(model => model.provider)
+    )]
+    
+    // Use model objects directly, ensuring we have a consistent format
+    const modelObjects = judgeModels.map(model => {
+      // If it's already an object with all required fields, use it
+      if (typeof model === 'object' && model.id && model.provider) {
+        return model
+      }
+      
+      // If it's an object missing provider
+      if (typeof model === 'object' && model.id) {
+        return {
+          ...model,
+          provider: model.provider || 'unknown'
+        }
+      }
+      
+      // If it's just a string ID
+      return {
+        id: model,
+        name: model,
+        provider: 'unknown'
+      }
+    })
+    
+    // Get unique model IDs for backwards compatibility
+    const modelIds = [...new Set(modelObjects.map(model => model.id))]
+    
+    // Include any models from filters endpoint not already in the list
+    const additionalModelIds = (filters.models || []).filter(
+      id => !modelIds.includes(id)
+    )
+    
+    const additionalModels = additionalModelIds.map(id => ({
+      id,
+      name: id,
+      provider: 'unknown'
+    }))
+    
+    // Make sure there are default providers if none were found
+    const defaultProviders = ['openai', 'anthropic', 'google']
+    const allProviders = providers.length ? providers : defaultProviders
+    
     return {
       ...filters,
-      models: [...new Set([...(filters.models || []), ...judgeModels])]
+      models: modelObjects.concat(additionalModels),
+      modelIds: modelIds.concat(additionalModelIds),
+      providers: allProviders
     }
   } catch (error) {
     console.error('Error getting filter options:', error)
     // Fallback to just the filters endpoint if something goes wrong
-    const { data } = await api.get('/dashboard/filters')
-    return data
+    try {
+      const { data } = await api.get('/dashboard/filters')
+      return {
+        ...data,
+        providers: ['openai', 'anthropic', 'google'],
+        modelIds: data.models || []
+      }
+    } catch (fallbackError) {
+      console.error('Fallback error:', fallbackError)
+      return { models: [], themes: [], providers: ['openai', 'anthropic', 'google'], modelIds: [] }
+    }
   }
 }
 

@@ -87,6 +87,36 @@ async def evaluate_single_query(request: QueryEvaluationRequest):
     Returns the LLM output and evaluation results.
     """
     try:
+        # Check if model exists and auto-register if it's new
+        models_config_path = os.path.join(os.path.dirname(__file__), "config", "models.json")
+        model_exists = False
+        
+        if os.path.exists(models_config_path):
+            try:
+                with open(models_config_path, "r") as f:
+                    config = json.load(f)
+                    model_exists = any(model["id"] == request.model_id for model in config.get("models", []))
+            except Exception as e:
+                storage.logger.error(f"Error checking model existence: {str(e)}")
+        
+        # Auto-register new model if it doesn't exist
+        if not model_exists:
+            # Detect provider if not provided
+            provider = request.model_provider or detect_provider_from_id(request.model_id)
+            
+            # Prepare new model entry
+            new_model = {
+                "id": request.model_id,
+                "name": request.model_id,  # Use ID as name initially
+                "provider": provider,
+                "is_judge_compatible": False,  # Default to false until verified
+                "auto_registered": True  # Flag as auto-registered
+            }
+            
+            # Register the new model
+            await register_new_model(new_model)
+            storage.logger.info(f"Auto-registered new model: {request.model_id} (provider: {provider})")
+            
         # Initialize service clients
         eval_client = EvaluationStorageClient()
         
@@ -265,16 +295,23 @@ async def list_available_models():
     Returns a list of models that can be used for running queries and evaluation.
     """
     try:
-        # Skip using storage.list_available_models() since it's having issues
-        # Directly return a hardcoded list that includes our model
-        models = [
-            {"id": "gpt-4", "name": "GPT-4", "provider": "openai", "is_judge_compatible": True},
-            {"id": "gpt-3.5-turbo", "name": "GPT-3.5 Turbo", "provider": "openai", "is_judge_compatible": True},
-            {"id": "claude-3-opus-20240229", "name": "Claude 3 Opus", "provider": "anthropic", "is_judge_compatible": True},
-            {"id": "claude-3-sonnet-20240229", "name": "Claude 3 Sonnet", "provider": "anthropic", "is_judge_compatible": True},
-            {"id": "gemini-pro", "name": "Gemini Pro", "provider": "google", "is_judge_compatible": False},
-            {"id": "chatgpt-4o-latest", "name": "ChatGPT-4o (Latest)", "provider": "openai", "is_judge_compatible": True}
-        ]
+        # Load models from configuration file
+        models_config_path = os.path.join(os.path.dirname(__file__), "config", "models.json")
+        
+        if os.path.exists(models_config_path):
+            with open(models_config_path, "r") as f:
+                config = json.load(f)
+                models = config.get("models", [])
+        else:
+            # Fallback to defaults if file doesn't exist
+            models = [
+                {"id": "gpt-4", "name": "GPT-4", "provider": "openai", "is_judge_compatible": True},
+                {"id": "gpt-3.5-turbo", "name": "GPT-3.5 Turbo", "provider": "openai", "is_judge_compatible": True},
+                {"id": "claude-3-opus-20240229", "name": "Claude 3 Opus", "provider": "anthropic", "is_judge_compatible": True},
+                {"id": "claude-3-sonnet-20240229", "name": "Claude 3 Sonnet", "provider": "anthropic", "is_judge_compatible": True},
+                {"id": "gemini-pro", "name": "Gemini Pro", "provider": "google", "is_judge_compatible": False},
+                {"id": "chatgpt-4o-latest", "name": "ChatGPT-4o (Latest)", "provider": "openai", "is_judge_compatible": True}
+            ]
         
         return ApiResponse(
             status=ResponseStatus.SUCCESS,
@@ -282,6 +319,73 @@ async def list_available_models():
         )
     except Exception as e:
         raise ApiError(status_code=500, message=str(e))
+
+# Helper function to detect provider from model ID
+def detect_provider_from_id(model_id: str) -> str:
+    """
+    Attempt to infer the provider from the model ID.
+    
+    Args:
+        model_id: The model identifier
+        
+    Returns:
+        The inferred provider name, or "unknown" if it can't be determined
+    """
+    model_id = model_id.lower()
+    if any(name in model_id for name in ["gpt", "davinci", "chatgpt", "openai"]):
+        return "openai"
+    elif any(name in model_id for name in ["claude", "anthropic"]):
+        return "anthropic"
+    elif any(name in model_id for name in ["gemini", "palm", "bard", "google"]):
+        return "google"
+    elif any(name in model_id for name in ["llama", "meta"]):
+        return "meta"
+    elif any(name in model_id for name in ["mistral"]):
+        return "mistral"
+    else:
+        return "unknown"
+
+# Function to register a new model
+async def register_new_model(model_data: Dict[str, Any]) -> bool:
+    """
+    Register a new model in the models.json configuration file.
+    
+    Args:
+        model_data: Dictionary containing the model information
+        
+    Returns:
+        True if the model was registered successfully, False otherwise
+    """
+    try:
+        models_config_path = os.path.join(os.path.dirname(__file__), "config", "models.json")
+        
+        # Create config directory if it doesn't exist
+        os.makedirs(os.path.dirname(models_config_path), exist_ok=True)
+        
+        # Load existing config or create a new one
+        if os.path.exists(models_config_path):
+            with open(models_config_path, "r") as f:
+                config = json.load(f)
+        else:
+            config = {"models": []}
+        
+        # Check if model already exists
+        for existing_model in config["models"]:
+            if existing_model["id"] == model_data["id"]:
+                # Model already exists, no need to add it again
+                return True
+        
+        # Add new model
+        config["models"].append(model_data)
+        
+        # Save updated config
+        with open(models_config_path, "w") as f:
+            json.dump(config, f, indent=2)
+        
+        return True
+    except Exception as e:
+        storage.logger.error(f"Error registering new model: {str(e)}")
+        return False
 
 # For backward compatibility, keep the original routes but direct to the new implementations
 @app.post("/evaluate/query", tags=["Legacy"])

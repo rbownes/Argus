@@ -388,13 +388,28 @@ async def get_judge_models(
                 if response.status == 200:
                     data = await response.json()
                     if "data" in data and isinstance(data["data"], list):
-                        judge_models = [model["id"] for model in data["data"]]
+                        # Pass through complete model objects instead of just IDs
+                        judge_models = data["data"]
+                        
+                        # For database models without provider info, create minimal objects
+                        db_model_objects = []
+                        for model_id in db_models:
+                            # Skip if already in judge_models
+                            if any(m.get('id') == model_id for m in judge_models):
+                                continue
+                            db_model_objects.append({
+                                "id": model_id,
+                                "name": model_id,
+                                "provider": "unknown"
+                            })
+                        
                         # Combine both sources
-                        all_models = list(set(db_models + judge_models))
-                        return {"models": all_models}
+                        return {"models": judge_models + db_model_objects}
                 
                 # If we get here, there was an issue with the judge service API
-                return {"models": db_models}
+                # Convert db_models to objects
+                db_model_objects = [{"id": m, "name": m, "provider": "unknown"} for m in db_models]
+                return {"models": db_model_objects}
     except Exception as e:
         logger.error(f"Error getting judge models: {str(e)}")
         return {"models": []}

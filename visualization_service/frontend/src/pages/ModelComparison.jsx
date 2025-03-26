@@ -79,44 +79,14 @@ const ModelComparison = () => {
   const histogramData = comparisonData.histograms || {}
   const rawData = comparisonData.raw_data || []
   
-  // Get available filter options
-  const modelsFromApi = filterOptionsQuery.data?.models || []
+  // Get available model IDs for dropdown
+  const availableModels = filterOptionsQuery.data?.modelIds || []
   
-  // Ensure chatgpt-4o-latest is in the list even if not returned by the API
-  // This is a temporary fix for the missing model in the API response
-  const availableModels = [...modelsFromApi]
-  if (!availableModels.includes('chatgpt-4o-latest')) {
-    availableModels.push('chatgpt-4o-latest')
-  }
-  
+  // Get available themes
   const availableThemes = filterOptionsQuery.data?.themes || []
   
-  // Extract unique providers from models
-  const availableProviders = Array.from(
-    new Set(
-      modelsFromApi
-        .filter(model => {
-          // Find full model object that includes provider information
-          const modelObj = filterOptionsQuery.data?.models?.find(m => 
-            typeof m === 'object' && m.id === model
-          )
-          return modelObj && modelObj.provider
-        })
-        .map(model => {
-          // Get provider from model object
-          const modelObj = filterOptionsQuery.data?.models?.find(m => 
-            typeof m === 'object' && m.id === model
-          )
-          return modelObj?.provider
-        })
-        .filter(Boolean) // Remove undefined values
-    )
-  )
-  
-  // Add default providers if none are found
-  if (!availableProviders.length) {
-    availableProviders.push('openai', 'anthropic', 'google')
-  }
+  // Get providers directly from the API response
+  const availableProviders = filterOptionsQuery.data?.providers || ['openai', 'anthropic', 'google']
 
   // Handle filter changes
   const handleModelFilterChange = (e) => {
