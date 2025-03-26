@@ -457,10 +457,12 @@ class JudgeStorage:
         except Exception as e:
             self.logger.error(f"Error listing available models: {str(e)}")
             # Return default models if LiteLLM can't provide the list
+            # Include the chatgpt-4o-latest model that was used in the evaluation
             return [
                 {"id": "gpt-4", "name": "GPT-4", "provider": "openai", "is_judge_compatible": True},
                 {"id": "gpt-3.5-turbo", "name": "GPT-3.5 Turbo", "provider": "openai", "is_judge_compatible": True},
                 {"id": "claude-3-opus-20240229", "name": "Claude 3 Opus", "provider": "anthropic", "is_judge_compatible": True},
                 {"id": "claude-3-sonnet-20240229", "name": "Claude 3 Sonnet", "provider": "anthropic", "is_judge_compatible": True},
-                {"id": "gemini-pro", "name": "Gemini Pro", "provider": "google", "is_judge_compatible": False}
+                {"id": "gemini-pro", "name": "Gemini Pro", "provider": "google", "is_judge_compatible": False},
+                {"id": "chatgpt-4o-latest", "name": "ChatGPT-4o (Latest)", "provider": "openai", "is_judge_compatible": True}
             ]

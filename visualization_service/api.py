@@ -352,8 +352,52 @@ async def get_filter_options(
         filters = await dashboard.get_filter_options()
         return filters
     except Exception as e:
-        logger.error(f"Error in get_filter_options: {str(e)}")
+        logger.error(f"Error getting filter options: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/v1/judge-models")
+async def get_judge_models(
+    api_key: str = Depends(verify_api_key)
+):
+    """
+    Get available models directly from the judge service.
+    This is a more reliable way to get model information than through database queries.
+    """
+    try:
+        import aiohttp
+        import os
+        
+        judge_service_url = os.environ.get("JUDGE_SERVICE_URL", "http://judge-service:8000")
+        api_key_value = os.environ.get("API_KEY", "dev_api_key_for_testing")
+        
+        # Also try to get models from our database if we can
+        db_models = []
+        try:
+            db_models = dashboard.db.get_available_models()
+        except Exception:
+            pass
+        
+        async with aiohttp.ClientSession() as session:
+            async with session.get(
+                f"{judge_service_url}/api/v1/models",
+                headers={
+                    "X-API-Key": api_key_value,
+                    "Content-Type": "application/json"
+                }
+            ) as response:
+                if response.status == 200:
+                    data = await response.json()
+                    if "data" in data and isinstance(data["data"], list):
+                        judge_models = [model["id"] for model in data["data"]]
+                        # Combine both sources
+                        all_models = list(set(db_models + judge_models))
+                        return {"models": all_models}
+                
+                # If we get here, there was an issue with the judge service API
+                return {"models": db_models}
+    except Exception as e:
+        logger.error(f"Error getting judge models: {str(e)}")
+        return {"models": []}
 
 # WebSocket for real-time updates (optional)
 @app.websocket("/ws")

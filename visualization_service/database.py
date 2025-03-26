@@ -61,7 +61,14 @@ class VisualizationDB:
         """
         with self.engine.connect() as connection:
             result = connection.execute(text(query), params or {})
-            return [dict(row) for row in result]
+            # More robust row processing with explicit column names
+            rows = []
+            for row in result:
+                row_dict = {}
+                for column, value in row._mapping.items():
+                    row_dict[str(column)] = value
+                rows.append(row_dict)
+            return rows
     
     def check_connection(self) -> bool:
         """Check if database connection is working."""

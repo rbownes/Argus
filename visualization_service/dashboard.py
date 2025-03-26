@@ -439,8 +439,40 @@ class Dashboard:
         """
         self.logger.info("Getting filter options")
         try:
+            # Get models from both database and judge service
+            db_models = self.db.get_available_models()
+            
+            # Try to get models from judge service directly
+            judge_models = []
+            try:
+                import aiohttp
+                import os
+                
+                judge_service_url = os.environ.get("JUDGE_SERVICE_URL", "http://judge-service:8000")
+                api_key = os.environ.get("API_KEY", "dev_api_key_for_testing")
+                
+                async with aiohttp.ClientSession() as session:
+                    async with session.get(
+                        f"{judge_service_url}/api/v1/models",
+                        headers={
+                            "X-API-Key": api_key,
+                            "Content-Type": "application/json"
+                        }
+                    ) as response:
+                        if response.status == 200:
+                            data = await response.json()
+                            if "data" in data and isinstance(data["data"], list):
+                                judge_models = [model["id"] for model in data["data"]]
+                                self.logger.info(f"Retrieved {len(judge_models)} models from judge service")
+            except Exception as judge_error:
+                self.logger.error(f"Error getting models from judge service: {str(judge_error)}")
+            
+            # Combine models from both sources
+            all_models = list(set(db_models + judge_models))
+            
+            # Get themes and prompts from database
             return {
-                "models": self.db.get_available_models(),
+                "models": all_models,
                 "themes": self.db.get_available_themes(),
                 "evaluation_prompts": self.db.get_available_evaluation_prompts()
             }

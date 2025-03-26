@@ -1,7 +1,32 @@
-import React from 'react'
+import React, { useState, useEffect } from 'react'
 import { NavLink } from 'react-router-dom'
+import { getFilterOptions } from '../services/api'
 
 const Sidebar = () => {
+  const [filterOptions, setFilterOptions] = useState({
+    models: [],
+    themes: []
+  })
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState(null)
+
+  useEffect(() => {
+    async function fetchFilterOptions() {
+      try {
+        setIsLoading(true)
+        const options = await getFilterOptions()
+        setFilterOptions(options)
+        setError(null)
+      } catch (err) {
+        console.error('Error fetching filter options:', err)
+        setError('Failed to load filters')
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    fetchFilterOptions()
+  }, [])
   const activeClass = "bg-blue-100 text-blue-600 border-r-4 border-blue-600"
   const inactiveClass = "text-gray-700 hover:bg-gray-100"
   
@@ -50,21 +75,33 @@ const Sidebar = () => {
           
           <div className="form-group">
             <label className="form-label">Models</label>
-            <select className="form-control text-sm">
+            <select className="form-control text-sm" disabled={isLoading}>
               <option>All Models</option>
-              <option>GPT-4</option>
-              <option>Claude-3</option>
-              <option>Gemini Pro</option>
+              {isLoading ? (
+                <option>Loading models...</option>
+              ) : error ? (
+                <option>Error loading models</option>
+              ) : (
+                filterOptions.models.map(model => (
+                  <option key={model}>{model}</option>
+                ))
+              )}
             </select>
           </div>
           
           <div className="form-group">
             <label className="form-label">Themes</label>
-            <select className="form-control text-sm">
+            <select className="form-control text-sm" disabled={isLoading}>
               <option>All Themes</option>
-              <option>science_explanations</option>
-              <option>coding_tasks</option>
-              <option>creative_writing</option>
+              {isLoading ? (
+                <option>Loading themes...</option>
+              ) : error ? (
+                <option>Error loading themes</option>
+              ) : (
+                filterOptions.themes.map(theme => (
+                  <option key={theme}>{theme}</option>
+                ))
+              )}
             </select>
           </div>
           

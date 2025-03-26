@@ -111,8 +111,26 @@ export const getDetailedResults = async (filters = {}) => {
 }
 
 export const getFilterOptions = async () => {
-  const { data } = await api.get('/dashboard/filters')
-  return data
+  try {
+    // First try to get models from judge-models endpoint
+    const judgeModelsResponse = await api.get('/judge-models')
+    const judgeModels = judgeModelsResponse.data?.models || []
+    
+    // Also get other filters from regular filters endpoint
+    const filtersResponse = await api.get('/dashboard/filters')
+    const filters = filtersResponse.data || {}
+    
+    // Combine the models from both sources
+    return {
+      ...filters,
+      models: [...new Set([...(filters.models || []), ...judgeModels])]
+    }
+  } catch (error) {
+    console.error('Error getting filter options:', error)
+    // Fallback to just the filters endpoint if something goes wrong
+    const { data } = await api.get('/dashboard/filters')
+    return data
+  }
 }
 
 // WebSocket connection for real-time updates (optional)

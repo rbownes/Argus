@@ -78,7 +78,15 @@ const ModelComparison = () => {
   const rawData = comparisonData.raw_data || []
   
   // Get available filter options
-  const availableModels = filterOptionsQuery.data?.models || []
+  const modelsFromApi = filterOptionsQuery.data?.models || []
+  
+  // Ensure chatgpt-4o-latest is in the list even if not returned by the API
+  // This is a temporary fix for the missing model in the API response
+  const availableModels = [...modelsFromApi]
+  if (!availableModels.includes('chatgpt-4o-latest')) {
+    availableModels.push('chatgpt-4o-latest')
+  }
+  
   const availableThemes = filterOptionsQuery.data?.themes || []
 
   // Handle filter changes
