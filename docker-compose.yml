@@ -213,7 +213,17 @@ services:
 
 volumes:
   query_data:
+    external: true
+    name: panopticon_query_data
   evaluation_data:
+    external: true
+    name: panopticon_evaluation_data
   judge_data:
+    external: true
+    name: panopticon_judge_data
   postgres_data:
+    external: true
+    name: panopticon_postgres_data
   model_registry_data:
+    external: true
+    name: panopticon_model_registry_data
