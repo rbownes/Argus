@@ -16,7 +16,7 @@ from shared.utils import (
 )
 from shared.config import ServiceConfig
 from shared.middleware import add_middleware
-from .query_storage import QueryStorage
+from .storage_factory import get_query_storage
 
 # Create FastAPI app
 app = create_api_app(
@@ -29,8 +29,8 @@ app = create_api_app(
 config = ServiceConfig.from_env("query-storage")
 add_middleware(app, api_key=os.environ.get("API_KEY"))
 
-# Initialize storage
-storage = QueryStorage()
+# Initialize storage using factory
+storage = get_query_storage()
 
 # API Models
 class QueryRequest(BaseModel):
@@ -73,6 +73,8 @@ async def store_query(request: QueryRequest):
     except Exception as e:
         raise ApiError(status_code=500, message=str(e))
 
+# Note: Order is important for FastAPI routes with path parameters
+# More specific routes must be placed before more general routes
 @app.get("/api/v1/queries/theme/{theme}", response_model=ApiResponse, tags=["Queries"])
 async def get_queries_by_theme(
     theme: str, 
@@ -100,22 +102,45 @@ async def get_queries_by_theme(
     except Exception as e:
         raise ApiError(status_code=500, message=str(e))
 
+class SearchRequest(BaseModel):
+    """Request model for searching similar queries."""
+    query: str = Field(..., description="Query text to search for")
+    limit: Optional[int] = Field(5, ge=1, le=100, description="Maximum number of results to return")
+
 @app.post("/api/v1/queries/search", response_model=ApiResponse, tags=["Queries"])
-async def search_similar_queries(
-    query: str = Query(..., description="Query text to search for"),
-    limit: int = Query(5, ge=1, le=100, description="Maximum number of results to return")
-):
+async def search_similar_queries(request: SearchRequest):
     """
     Search for semantically similar queries.
     
     Returns a list of queries that are semantically similar to the input query.
     """
     try:
-        results = storage.search_similar_queries(query, limit)
+        results = storage.search_similar_queries(request.query, request.limit)
         return ApiResponse(
             status=ResponseStatus.SUCCESS,
             data=results
         )
+    except Exception as e:
+        raise ApiError(status_code=500, message=str(e))
+
+@app.get("/api/v1/queries/{query_id}", response_model=ApiResponse, tags=["Queries"])
+async def get_query_by_id(query_id: str):
+    """
+    Retrieve a query by its ID.
+    
+    Returns the query with the specified ID.
+    """
+    try:
+        result = storage.get_query_by_id(query_id)
+        if not result:
+            raise ApiError(status_code=404, message=f"Query with ID {query_id} not found")
+            
+        return ApiResponse(
+            status=ResponseStatus.SUCCESS,
+            data=result
+        )
+    except ApiError as e:
+        raise e
     except Exception as e:
         raise ApiError(status_code=500, message=str(e))
 
@@ -139,10 +164,13 @@ async def get_queries_by_theme_legacy(
     return response.data["items"]
 
 @app.post("/queries/search", response_model=List[QueryResponse], tags=["Legacy"])
-async def search_similar_queries_legacy(
-    query: str = Query(...),
-    limit: int = Query(5, ge=1, le=100)
-):
+async def search_similar_queries_legacy(request: SearchRequest):
     """Legacy endpoint for searching similar queries."""
-    response = await search_similar_queries(query=query, limit=limit)
+    response = await search_similar_queries(request=request)
+    return response.data
+
+@app.get("/queries/{query_id}", response_model=QueryResponse, tags=["Legacy"])
+async def get_query_by_id_legacy(query_id: str):
+    """Legacy endpoint for retrieving a query by ID."""
+    response = await get_query_by_id(query_id)
     return response.data

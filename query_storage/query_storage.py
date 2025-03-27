@@ -23,7 +23,8 @@ class QueryStorage:
         try:
             self.client = chromadb.Client(Settings(
                 persist_directory=persist_directory,
-                anonymized_telemetry=False
+                anonymized_telemetry=False,
+                is_persistent=True  # Explicitly enable persistence
             ))
             self.collection = self.client.get_or_create_collection(
                 name="queries",
@@ -63,7 +64,10 @@ class QueryStorage:
                 ids=[query_id]
             )
             
-            self.logger.info(f"Stored query with ID {query_id} and theme '{theme}'")
+            # Explicitly persist to disk
+            self.client.persist()
+            
+            self.logger.info(f"Stored query with ID {query_id} and theme '{theme}' and persisted to disk")
             return query_id
         except Exception as e:
             self.logger.error(f"Failed to store query: {str(e)}")

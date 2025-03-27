@@ -20,7 +20,8 @@ from shared.utils import (
 )
 from shared.config import ServiceConfig
 from shared.middleware import add_middleware
-from .judge_storage import JudgeStorage, EvaluationResult
+from .judge_storage import EvaluationResult
+from .storage_factory import get_judge_storage
 from .service_clients import QueryStorageClient, EvaluationStorageClient
 
 # Create FastAPI app
@@ -34,8 +35,8 @@ app = create_api_app(
 config = ServiceConfig.from_env("judge-service")
 add_middleware(app, api_key=os.environ.get("API_KEY"))
 
-# Initialize storage
-storage = JudgeStorage()
+# Initialize storage using factory pattern
+storage = get_judge_storage()
 
 # API Models
 class QueryEvaluationRequest(BaseModel):
@@ -270,7 +271,9 @@ async def get_evaluation_results(
     Returns a list of evaluation results matching the specified filters.
     """
     try:
-        results, total_count = storage.get_evaluation_results(
+        # Modify the get_filtered_results method to return fully detached objects
+        # This ensures we're working with complete objects that don't need session access
+        result_dicts = storage.get_evaluation_results(
             theme=filter_params.theme,
             model_id=filter_params.model_id,
             evaluation_prompt_id=filter_params.evaluation_prompt_id,
@@ -281,6 +284,10 @@ async def get_evaluation_results(
             limit=pagination.limit,
             skip=pagination.get_skip()
         )
+        
+        # The get_evaluation_results method now returns a tuple of (results, total_count)
+        # where results is already a list of dictionaries
+        results, total_count = result_dicts
         
         return ApiResponse(
             status=ResponseStatus.SUCCESS,

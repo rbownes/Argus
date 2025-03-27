@@ -34,8 +34,29 @@ class EvaluationResult(Base):
     
     def to_dict(self) -> Dict[str, Any]:
         """Convert model to dictionary."""
-        # Create a copy of result_metadata to avoid refresh issues
-        metadata = self.result_metadata.copy() if self.result_metadata else None
+        # Safely handle result_metadata to avoid session refresh issues
+        # Don't call .copy() which can trigger a session refresh
+        if hasattr(self, 'result_metadata') and self.result_metadata is not None:
+            try:
+                # Try to convert to dict if it's not already
+                if isinstance(self.result_metadata, dict):
+                    metadata = dict(self.result_metadata)
+                else:
+                    metadata = dict(self.result_metadata)
+            except Exception:
+                # Fallback if can't convert
+                metadata = None
+        else:
+            metadata = None
+        
+        # Handle timestamp similarly
+        if hasattr(self, 'timestamp') and self.timestamp is not None:
+            try:
+                timestamp_str = self.timestamp.isoformat()
+            except Exception:
+                timestamp_str = None
+        else:
+            timestamp_str = None
         
         return {
             "id": self.id,
@@ -48,7 +69,7 @@ class EvaluationResult(Base):
             "evaluation_prompt": self.evaluation_prompt,
             "score": self.score,
             "judge_model": self.judge_model,
-            "timestamp": self.timestamp.isoformat() if self.timestamp else None,
+            "timestamp": timestamp_str,
             "metadata": metadata
         }
 
@@ -66,7 +87,7 @@ class EvaluationResultRepository(Repository[EvaluationResult]):
         end_date: Optional[datetime] = None,
         limit: int = 100,
         skip: int = 0
-    ) -> Tuple[List[EvaluationResult], int]:
+    ) -> Tuple[List[Dict[str, Any]], int]:
         """
         Get evaluation results with filtering.
         
@@ -82,7 +103,7 @@ class EvaluationResultRepository(Repository[EvaluationResult]):
             skip: Number of results to skip for pagination
             
         Returns:
-            Tuple of (results, total_count)
+            Tuple of (results as dictionaries, total_count)
         """
         with self.db.get_session() as session:
             # Build query with filters
@@ -117,7 +138,41 @@ class EvaluationResultRepository(Repository[EvaluationResult]):
             # Apply pagination and sort by timestamp descending
             results = query.order_by(EvaluationResult.timestamp.desc()).offset(skip).limit(limit).all()
             
-            return results, total_count
+            # Convert to dictionaries within the session context
+            result_dicts = []
+            for result in results:
+                # Safely extract all attributes to avoid session dependency
+                result_dict = {
+                    "id": result.id,
+                    "query_id": result.query_id,
+                    "query_text": result.query_text,
+                    "output_text": result.output_text,
+                    "model_id": result.model_id,
+                    "theme": result.theme,
+                    "evaluation_prompt_id": result.evaluation_prompt_id,
+                    "evaluation_prompt": result.evaluation_prompt,
+                    "score": float(result.score) if result.score is not None else None,
+                    "judge_model": result.judge_model,
+                    "timestamp": result.timestamp.isoformat() if result.timestamp else None,
+                }
+                
+                # Handle metadata separately to avoid session refresh issues
+                if hasattr(result, 'result_metadata') and result.result_metadata is not None:
+                    try:
+                        # Make a deep copy of the metadata to detach it from the session
+                        if isinstance(result.result_metadata, dict):
+                            result_dict["metadata"] = dict(result.result_metadata)
+                        else:
+                            result_dict["metadata"] = dict(result.result_metadata)
+                    except Exception as e:
+                        logging.warning(f"Failed to convert metadata to dict: {str(e)}")
+                        result_dict["metadata"] = None
+                else:
+                    result_dict["metadata"] = None
+                
+                result_dicts.append(result_dict)
+            
+            return result_dicts, total_count
 
 class JudgeStorage:
     """Storage for LLM outputs and evaluation results."""
@@ -434,7 +489,9 @@ class JudgeStorage:
             Tuple of (results list, total count)
         """
         try:
-            results, total_count = self.results_repo.get_filtered_results(
+            # Get results and total count from repository
+            # The get_filtered_results method now returns dictionaries directly
+            result_dicts, total_count = self.results_repo.get_filtered_results(
                 theme=theme,
                 model_id=model_id,
                 evaluation_prompt_id=evaluation_prompt_id,
@@ -446,10 +503,10 @@ class JudgeStorage:
                 skip=skip
             )
             
-            self.logger.info(f"Retrieved {len(results)} evaluation results (total: {total_count})")
+            self.logger.info(f"Retrieved {len(result_dicts)} evaluation results (total: {total_count})")
             
-            # Convert models to dictionaries
-            return [result.to_dict() for result in results], total_count
+            # The results are already dictionaries, so we can return them directly
+            return result_dicts, total_count
         except Exception as e:
             self.logger.error(f"Error retrieving evaluation results: {str(e)}")
             raise

@@ -40,6 +40,10 @@ services:
       - PYTHONPATH=/app
       - LOG_LEVEL=INFO
       - API_KEY=${API_KEY}
+      - QUERY_STORAGE_TYPE=${QUERY_STORAGE_TYPE:-postgres}
+      - DATABASE_URL=${DATABASE_URL}
+    depends_on:
+      - postgres
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
@@ -120,7 +124,9 @@ services:
           memory: 1G
 
   postgres:
-    image: postgres:15
+    build:
+      context: .
+      dockerfile: postgres/Dockerfile
     environment:
       - POSTGRES_USER=postgres
       - POSTGRES_PASSWORD=postgres

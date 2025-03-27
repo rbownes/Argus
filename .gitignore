@@ -5,6 +5,7 @@
 */data/
 judge_data/
 evaluation_data/
+*/postgres/
 
 # Python
 __pycache__/

@@ -16,7 +16,7 @@ from shared.utils import (
 )
 from shared.config import ServiceConfig
 from shared.middleware import add_middleware
-from .evaluation_storage import EvaluationStorage
+from .storage_factory import get_evaluation_storage
 
 # Create FastAPI app
 app = create_api_app(
@@ -29,8 +29,8 @@ app = create_api_app(
 config = ServiceConfig.from_env("evaluation-storage")
 add_middleware(app, api_key=os.environ.get("API_KEY"))
 
-# Initialize storage
-storage = EvaluationStorage()
+# Initialize storage using factory pattern
+storage = get_evaluation_storage()
 
 # API Models
 class EvaluationMetricRequest(BaseModel):
