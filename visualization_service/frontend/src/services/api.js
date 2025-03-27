@@ -9,13 +9,15 @@ const api = axios.create({
 })
 
 // Add a request interceptor to include API key
-// In a production app, this would come from a secure source like an env variable or auth provider
 api.interceptors.request.use(
   (config) => {
-    // Add API key to every request
-    // For demo purposes, we'll use a hardcoded key that matches the backend default
-    // In production, you'd get this from a more secure source
-    config.headers['X-API-Key'] = 'dev_api_key_for_testing'
+    // Get API key from environment variable set during build
+    const apiKey = import.meta.env.VITE_API_KEY;
+    if (apiKey) {
+      config.headers['X-API-Key'] = apiKey;
+    } else {
+      console.warn("API Key (VITE_API_KEY) is not set. Requests might fail.");
+    }
     return config
   },
   (error) => {

@@ -10,6 +10,8 @@ from typing import List, Dict, Optional, Any, Tuple, Union
 from sentence_transformers import SentenceTransformer
 from sqlalchemy import text
 from shared.db import Database, Base, Repository
+from shared.service_client import ServiceClient
+from shared.utils import ApiError
 from .judge_storage import EvaluationResult, EvaluationResultRepository
 
 class PgJudgeStorage:
@@ -54,10 +56,10 @@ class PgJudgeStorage:
             self.logger.error(f"Failed to initialize PostgreSQL: {str(e)}")
             raise
         
-        # Initialize provider manager
-        from .provider_manager import ProviderManager
-        self.provider_manager = ProviderManager()
-        self.logger.info("Provider Manager initialized")
+        # Initialize client for Model Registry
+        model_registry_url = os.environ.get("MODEL_REGISTRY_URL", "http://model-registry:8000")
+        self.model_registry_client = ServiceClient(model_registry_url)
+        self.logger.info(f"Model Registry client initialized for URL: {model_registry_url}")
         
     def _create_tables(self):
         """Create necessary tables and extensions if they don't exist."""
@@ -106,19 +108,19 @@ class PgJudgeStorage:
         model_provider: Optional[str] = None
     ) -> Dict[str, Any]:
         """
-        Run a query through the LLM providers and store the output.
+        Run a query through the Model Registry and store the output.
         
         Args:
             query: Query text to run
             model_id: ID of the LLM model to use
             theme: Theme or category of the query
             metadata: Additional metadata
-            model_provider: Provider of the LLM model (e.g., 'google', 'anthropic', 'openai')
+            model_provider: Provider of the LLM model (optional, determined by registry)
             
         Returns:
             Dictionary with output information
         """
-        self.logger.info(f"Running query with model {model_id}: {query[:50]}...")
+        self.logger.info(f"Running query via Model Registry ({model_id}): {query[:50]}...")
         try:
             # Prepare messages for the model
             messages = [{"role": "user", "content": query}]
@@ -126,63 +128,75 @@ class PgJudgeStorage:
             # Get default temperature from environment
             temperature = float(os.environ.get("MODEL_DEFAULT_TEMPERATURE", "0.7"))
             
-            # Generate completion using Provider Manager
-            try:
-                completion = await self.provider_manager.complete(
-                    model_id=model_id,
-                    messages=messages,
-                    temperature=temperature
+            # Call Model Registry Completion Endpoint
+            completion_request = {
+                "model_id": model_id,
+                "messages": messages,
+                "temperature": temperature
+                # Add max_tokens if needed
+            }
+            
+            completion_response = await self.model_registry_client.post(
+                "/api/v1/completion",
+                data=completion_request
+            )
+            
+            # Check registry response status
+            if completion_response.get("status") != "success" or not completion_response.get("data"):
+                error_msg = completion_response.get('message', 'Unknown error from model registry')
+                raise ApiError(status_code=500, message=f"Model Registry Error: {error_msg}")
+            
+            completion_data = completion_response["data"]
+            output_text = completion_data.get("content", "")
+            output_id = completion_data.get("id", str(uuid.uuid4()))
+            provider = completion_data.get("provider_id", "unknown")  # Get provider from registry response
+            
+            # Generate embedding for the output text
+            embedding = self.embedding_model.encode(output_text).tolist()
+            
+            # Prepare metadata
+            output_metadata = {
+                "model_id": model_id,
+                "theme": theme,
+                "query": query,
+                "timestamp": datetime.utcnow().isoformat(),
+                "provider": provider,  # Use provider from registry
+                **(metadata or {})
+            }
+            
+            # Store in PostgreSQL
+            with self.db.engine.connect() as connection:
+                # Ensure metadata is properly serialized as a JSON string
+                serialized_metadata = json.dumps(output_metadata)
+                
+                connection.execute(
+                    text("""
+                    INSERT INTO llm_outputs (id, output_text, embedding, model_id, theme, query, metadata, created_at)
+                    VALUES (:id, :output_text, :embedding, :model_id, :theme, :query, :metadata, NOW())
+                    """),
+                    {
+                        "id": output_id,
+                        "output_text": output_text,
+                        "embedding": embedding,
+                        "model_id": model_id,
+                        "theme": theme,
+                        "query": query,
+                        "metadata": serialized_metadata
+                    }
                 )
-                
-                output_text = completion.get("content", "")
-                output_id = completion.get("id", str(uuid.uuid4()))
-                
-                # Generate embedding for the output text
-                embedding = self.embedding_model.encode(output_text).tolist()
-                
-                # Prepare metadata
-                output_metadata = {
-                    "model_id": model_id,
-                    "theme": theme,
-                    "query": query,
-                    "timestamp": datetime.utcnow().isoformat(),
-                    "provider": completion.get("provider", model_provider),
-                    **(metadata or {})
-                }
-                
-                # Store in PostgreSQL
-                with self.db.engine.connect() as connection:
-                    # Ensure metadata is properly serialized as a JSON string
-                    serialized_metadata = json.dumps(output_metadata)
-                    
-                    connection.execute(
-                        text("""
-                        INSERT INTO llm_outputs (id, output_text, embedding, model_id, theme, query, metadata, created_at)
-                        VALUES (:id, :output_text, :embedding, :model_id, :theme, :query, :metadata, NOW())
-                        """),
-                        {
-                            "id": output_id,
-                            "output_text": output_text,
-                            "embedding": embedding,
-                            "model_id": model_id,
-                            "theme": theme,
-                            "query": query,
-                            "metadata": serialized_metadata
-                        }
-                    )
-                    connection.commit()
-                
-                self.logger.info(f"Stored LLM output with ID {output_id}")
-                
-                return {
-                    "id": output_id,
-                    "output": output_text,
-                    "metadata": output_metadata
-                }
-            except Exception as e:
-                # Log the error
-                self.logger.error(f"Error generating completion: {str(e)}")
-                raise ValueError(f"Error generating completion: {str(e)}")
+                connection.commit()
+            
+            self.logger.info(f"Stored LLM output with ID {output_id}")
+            
+            return {
+                "id": output_id,
+                "output": output_text,
+                "metadata": output_metadata
+            }
+        except ApiError as e:
+            # Propagate ApiErrors
+            self.logger.error(f"API error running query via registry: {e.message}")
+            raise e
                 
         except Exception as e:
             self.logger.error(f"Error running query with LLM: {str(e)}")
@@ -200,7 +214,7 @@ class PgJudgeStorage:
         metadata: Optional[Dict] = None
     ) -> Dict[str, Any]:
         """
-        Evaluate an LLM output using a judge LLM.
+        Evaluate an LLM output using a judge LLM via Model Registry.
         
         Args:
             query: Original query
@@ -215,7 +229,7 @@ class PgJudgeStorage:
         Returns:
             Dictionary with evaluation result
         """
-        self.logger.info(f"Evaluating output using prompt ID {evaluation_prompt_id}")
+        self.logger.info(f"Evaluating output using judge model {judge_model} via Model Registry")
         try:
             evaluation_prompt_template = """
             You are an expert evaluator. Your task is to evaluate an AI's response based on specific criteria.
@@ -238,33 +252,38 @@ class PgJudgeStorage:
                 evaluation_prompt=evaluation_prompt
             )
             
-            # Get evaluation from judge LLM
-            self.logger.info(f"Using judge model {judge_model}")
+            # Create message for evaluation
+            eval_messages = [{"role": "user", "content": formatted_prompt}]
+            
+            # Call Model Registry for evaluation
+            eval_request = {
+                "model_id": judge_model,
+                "messages": eval_messages,
+                "temperature": 0.2  # Lower temp for deterministic scoring
+                # Add max_tokens if needed
+            }
+            
+            eval_response = await self.model_registry_client.post(
+                "/api/v1/completion",
+                data=eval_request
+            )
+            
+            if eval_response.get("status") != "success" or not eval_response.get("data"):
+                error_msg = eval_response.get('message', 'Unknown error from model registry during evaluation')
+                raise ApiError(status_code=500, message=f"Model Registry Eval Error: {error_msg}")
+            
+            eval_data = eval_response["data"]
+            score_text = eval_data.get("content", "").strip()
+            
+            # Try to parse the score, handle potential non-numeric responses
             try:
-                # Create message for evaluation
-                eval_messages = [{"role": "user", "content": formatted_prompt}]
-                
-                # Generate evaluation using Provider Manager
-                response = await self.provider_manager.complete(
-                    model_id=judge_model,
-                    messages=eval_messages
-                )
-                
-                # Extract score
-                score_text = response.get("content", "").strip()
-                
-                # Try to parse the score, handle potential non-numeric responses
-                try:
-                    score = float(score_text)
-                    # Clamp score to 1-10 range
-                    score = max(1.0, min(10.0, score))
-                except ValueError:
-                    self.logger.warning(f"Failed to parse score from judge response: {score_text}")
-                    # Default to middle score if parsing fails
-                    score = 5.0
-            except Exception as e:
-                self.logger.error(f"Error getting evaluation from judge LLM: {str(e)}")
-                raise
+                score = float(score_text)
+                # Clamp score to 1-10 range
+                score = max(1.0, min(10.0, score))
+            except ValueError:
+                self.logger.warning(f"Failed to parse score '{score_text}' from judge {judge_model}")
+                # Default to middle score if parsing fails
+                score = 5.0
             
             # Store evaluation result in PostgreSQL
             result_id = str(uuid.uuid4())
@@ -448,26 +467,21 @@ class PgJudgeStorage:
 
     async def list_available_models(self) -> List[Dict[str, Any]]:
         """
-        List available models for evaluation.
+        Get available models from the Model Registry.
         
         Returns:
             List of available models with their details
         """
         try:
-            # Get models from Provider Manager
-            models = await self.provider_manager.get_models()
-            return models
+            response = await self.model_registry_client.get("/api/v1/models")
+            if response.get("status") != "success":
+                self.logger.error(f"Error getting models from registry: {response.get('message')}")
+                raise ApiError(status_code=500, message=f"Failed to get models from registry")
+                
+            return response.get("data", [])
         except Exception as e:
             self.logger.error(f"Error listing available models: {str(e)}")
-            # Return default models if Provider Manager can't provide the list
-            return [
-                {"id": "gpt-4", "name": "GPT-4", "provider": "openai", "is_judge_compatible": True},
-                {"id": "gpt-3.5-turbo", "name": "GPT-3.5 Turbo", "provider": "openai", "is_judge_compatible": True},
-                {"id": "claude-3-opus-20240229", "name": "Claude 3 Opus", "provider": "anthropic", "is_judge_compatible": True},
-                {"id": "claude-3-sonnet-20240229", "name": "Claude 3 Sonnet", "provider": "anthropic", "is_judge_compatible": True},
-                {"id": "gemini-pro", "name": "Gemini Pro", "provider": "gemini", "is_judge_compatible": False},
-                {"id": "chatgpt-4o-latest", "name": "ChatGPT-4o (Latest)", "provider": "openai", "is_judge_compatible": True}
-            ]
+            raise ApiError(status_code=500, message=f"Failed to list available models: {str(e)}")
 
     def search_similar_outputs(self, output_text: str, limit: int = 5) -> List[Dict]:
         """

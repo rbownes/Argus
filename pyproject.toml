@@ -20,6 +20,8 @@ dependencies = [
     "python-jose[cryptography]>=3.3.0",
     "python-multipart>=0.0.6",
     "aiohttp>=3.8.5",
+    "python-json-logger>=2.0.7",
+    "asyncpg>=0.28.0",  # For async database operations
 ]
 
 [project.optional-dependencies]

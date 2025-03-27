@@ -4,12 +4,13 @@ Database utilities for the visualization service.
 from typing import Dict, List, Optional, Tuple, Any
 from datetime import datetime, timedelta
 import pandas as pd
-from sqlalchemy import create_engine, text
-from sqlalchemy.engine import Engine
+from sqlalchemy import text
+from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 import logging
-from contextlib import contextmanager
-from sqlalchemy.orm import sessionmaker, Session
+from contextlib import contextmanager, asynccontextmanager
+from sqlalchemy.orm import sessionmaker
 import json
+import asyncio
 
 logger = logging.getLogger("visualization_service.database")
 
@@ -25,32 +26,47 @@ class VisualizationDB:
             pool_size: Connection pool size
             max_overflow: Maximum number of connections to overflow
         """
-        self.engine = create_engine(
-            connection_string,
+        # Use create_async_engine and specify async driver (e.g., asyncpg)
+        # Ensure connection_string starts with postgresql+asyncpg://
+        async_connection_string = connection_string.replace("postgresql://", "postgresql+asyncpg://", 1)
+        self.engine = create_async_engine(
+            async_connection_string,
             pool_size=pool_size,
             max_overflow=max_overflow,
             pool_pre_ping=True  # Check connection before using from pool
         )
-        self.SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=self.engine)
-        self.logger = logging.getLogger("visualization_service.database")
+        # Use AsyncSession
+        self.async_session_factory = sessionmaker(
+            bind=self.engine, class_=AsyncSession, expire_on_commit=False
+        )
+        self.logger = logging.getLogger("visualization_service.database.async")
     
     @contextmanager
-    def get_session(self) -> Session:
-        """Get a database session with automatic cleanup."""
-        session = self.SessionLocal()
+    def get_session(self):
+        """
+        Get a database session with automatic cleanup.
+        Note: This is kept for backward compatibility but should be replaced with get_async_session.
+        """
+        self.logger.warning("Using synchronous get_session() is deprecated. Use get_async_session() instead.")
+        raise NotImplementedError("Synchronous sessions are no longer supported. Use get_async_session instead.")
+    
+    @asynccontextmanager
+    async def get_async_session(self) -> AsyncSession:
+        """Get an async database session with automatic cleanup."""
+        session: AsyncSession = self.async_session_factory()
         try:
             yield session
-            session.commit()
+            await session.commit()
         except Exception as e:
-            session.rollback()
-            self.logger.exception("Database error: %s", str(e))
+            await session.rollback()
+            self.logger.exception("Async Database error: %s", str(e))
             raise
         finally:
-            session.close()
+            await session.close()
     
-    def execute_query(self, query: str, params: Optional[Dict[str, Any]] = None) -> List[Dict[str, Any]]:
+    async def execute_query(self, query: str, params: Optional[Dict[str, Any]] = None) -> List[Dict[str, Any]]:
         """
-        Execute a raw SQL query.
+        Execute a raw SQL query asynchronously.
         
         Args:
             query: SQL query string
@@ -59,28 +75,34 @@ class VisualizationDB:
         Returns:
             List of dictionaries with query results
         """
-        with self.engine.connect() as connection:
-            result = connection.execute(text(query), params or {})
+        async with self.engine.connect() as connection:
+            result = await connection.execute(text(query), params or {})
             # More robust row processing with explicit column names
             rows = []
-            for row in result:
+            async for row in result:
                 row_dict = {}
                 for column, value in row._mapping.items():
+                    # Handle potential JSON decoding if needed here
+                    if isinstance(value, str) and column == 'result_metadata':
+                        try:
+                            value = json.loads(value)
+                        except json.JSONDecodeError:
+                            pass
                     row_dict[str(column)] = value
                 rows.append(row_dict)
             return rows
     
-    def check_connection(self) -> bool:
+    async def check_connection(self) -> bool:
         """Check if database connection is working."""
         try:
-            with self.engine.connect() as connection:
-                connection.execute(text("SELECT 1"))
+            async with self.engine.connect() as connection:
+                await connection.execute(text("SELECT 1"))
             return True
         except Exception as e:
-            self.logger.error("Database connection check failed: %s", str(e))
+            self.logger.error("Async Database connection check failed: %s", str(e))
             return False
     
-    def get_model_performance_over_time(
+    async def get_model_performance_over_time(
         self,
         start_date: Optional[datetime] = None,
         end_date: Optional[datetime] = None,
@@ -156,7 +178,7 @@ class VisualizationDB:
         
         # Execute query
         try:
-            results = self.execute_query(query, params)
+            results = await self.execute_query(query, params)
             if not results:
                 return pd.DataFrame()
             
@@ -172,7 +194,7 @@ class VisualizationDB:
             self.logger.error(f"Error getting model performance over time: {str(e)}")
             return pd.DataFrame()
     
-    def get_model_comparison(
+    async def get_model_comparison(
         self,
         start_date: Optional[datetime] = None,
         end_date: Optional[datetime] = None,
@@ -243,7 +265,7 @@ class VisualizationDB:
         
         # Execute query
         try:
-            results = self.execute_query(query, params)
+            results = await self.execute_query(query, params)
             if not results:
                 return pd.DataFrame()
             
@@ -252,7 +274,7 @@ class VisualizationDB:
             self.logger.error(f"Error getting model comparison: {str(e)}")
             return pd.DataFrame()
     
-    def get_theme_analysis(
+    async def get_theme_analysis(
         self,
         start_date: Optional[datetime] = None,
         end_date: Optional[datetime] = None,
@@ -272,7 +294,7 @@ class VisualizationDB:
             DataFrame with theme analysis data
         """
         # Get model comparison data
-        df = self.get_model_comparison(start_date, end_date, models, themes)
+        df = await self.get_model_comparison(start_date, end_date, models, themes)
         
         if df.empty:
             return pd.DataFrame()
@@ -285,7 +307,7 @@ class VisualizationDB:
             self.logger.error(f"Error creating theme analysis heatmap: {str(e)}")
             return pd.DataFrame()
     
-    def get_score_distribution(
+    async def get_score_distribution(
         self,
         start_date: Optional[datetime] = None,
         end_date: Optional[datetime] = None,
@@ -350,7 +372,7 @@ class VisualizationDB:
         
         # Execute query
         try:
-            results = self.execute_query(query, params)
+            results = await self.execute_query(query, params)
             if not results:
                 return {}
             
@@ -373,7 +395,7 @@ class VisualizationDB:
             self.logger.error(f"Error getting score distribution: {str(e)}")
             return {}
     
-    def get_filtered_results(
+    async def get_filtered_results(
         self,
         start_date: Optional[datetime] = None,
         end_date: Optional[datetime] = None,
@@ -490,11 +512,11 @@ class VisualizationDB:
         
         # Execute count query
         try:
-            count_result = self.execute_query(count_query, params)
+            count_result = await self.execute_query(count_query, params)
             total_count = count_result[0]['total'] if count_result else 0
             
             # Execute data query
-            results = self.execute_query(data_query, params)
+            results = await self.execute_query(data_query, params)
             
             # Convert timestamps to ISO format
             for result in results:
@@ -514,27 +536,27 @@ class VisualizationDB:
             self.logger.error(f"Error getting filtered results: {str(e)}")
             return [], 0
     
-    def get_available_themes(self) -> List[str]:
+    async def get_available_themes(self) -> List[str]:
         """Get list of available themes in the database."""
         query = "SELECT DISTINCT theme FROM evaluation_results ORDER BY theme"
         try:
-            results = self.execute_query(query)
+            results = await self.execute_query(query)
             return [result['theme'] for result in results if result['theme']]
         except Exception as e:
             self.logger.error(f"Error getting available themes: {str(e)}")
             return []
     
-    def get_available_models(self) -> List[str]:
+    async def get_available_models(self) -> List[str]:
         """Get list of available models in the database."""
         query = "SELECT DISTINCT model_id FROM evaluation_results ORDER BY model_id"
         try:
-            results = self.execute_query(query)
+            results = await self.execute_query(query)
             return [result['model_id'] for result in results if result['model_id']]
         except Exception as e:
             self.logger.error(f"Error getting available models: {str(e)}")
             return []
     
-    def get_available_evaluation_prompts(self) -> List[Dict[str, str]]:
+    async def get_available_evaluation_prompts(self) -> List[Dict[str, str]]:
         """Get list of available evaluation prompts in the database."""
         query = """
         SELECT DISTINCT evaluation_prompt_id, evaluation_prompt 
@@ -543,7 +565,7 @@ class VisualizationDB:
         ORDER BY evaluation_prompt_id
         """
         try:
-            results = self.execute_query(query)
+            results = await self.execute_query(query)
             return [{
                 'id': result['evaluation_prompt_id'],
                 'prompt': result['evaluation_prompt']
@@ -552,7 +574,7 @@ class VisualizationDB:
             self.logger.error(f"Error getting available evaluation prompts: {str(e)}")
             return []
     
-    def get_dashboard_summary(
+    async def get_dashboard_summary(
         self,
         start_date: Optional[datetime] = None,
         end_date: Optional[datetime] = None,
@@ -614,7 +636,7 @@ class VisualizationDB:
         
         # Execute query
         try:
-            results = self.execute_query(query, params)
+            results = await self.execute_query(query, params)
             if not results:
                 return {}
             
@@ -646,7 +668,7 @@ class VisualizationDB:
             LIMIT 5
             """
             
-            top_models = self.execute_query(top_models_query, params)
+            top_models = await self.execute_query(top_models_query, params)
             
             # Get top performing themes
             top_themes_query = """
@@ -674,7 +696,7 @@ class VisualizationDB:
             LIMIT 5
             """
             
-            top_themes = self.execute_query(top_themes_query, params)
+            top_themes = await self.execute_query(top_themes_query, params)
             
             # Get recent trend (last 7 days vs previous 7 days)
             if (end_date - start_date).days >= 14:
@@ -710,7 +732,7 @@ class VisualizationDB:
                 trend_params = params.copy()
                 trend_params["mid_date"] = mid_date
                 
-                trend_results = self.execute_query(recent_trend_query, trend_params)
+                trend_results = await self.execute_query(recent_trend_query, trend_params)
                 
                 trend_data = {}
                 for result in trend_results:

@@ -38,20 +38,58 @@ class ApiError(Exception):
         super().__init__(self.message)
 
 # Logging configuration
-def setup_logging(service_name: str) -> logging.Logger:
-    """Set up structured logging for a service."""
+def setup_logging(log_level="INFO"):
+    """
+    Set up structured JSON logging with pythonjsonlogger.
+    
+    Args:
+        log_level: Log level to use (DEBUG, INFO, WARNING, ERROR, CRITICAL)
+    """
+    logging_config = {
+        "version": 1,
+        "disable_existing_loggers": False,
+        "formatters": {
+            "json": {
+                "()": "pythonjsonlogger.jsonlogger.JsonFormatter",
+                "format": "%(asctime)s %(name)s %(levelname)s %(message)s %(request_id)s",
+            },
+            "simple": {
+                "format": "%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+            },
+        },
+        "handlers": {
+            "console": {
+                "class": "logging.StreamHandler",
+                "formatter": "json", # Use JSON formatter
+                "stream": "ext://sys.stdout",
+            },
+        },
+        "loggers": {
+            "": { # Root logger
+                "handlers": ["console"],
+                "level": log_level.upper(),
+            },
+             "uvicorn.error": { # Specific loggers if needed
+                 "level": "INFO",
+                 "handlers": ["console"],
+                 "propagate": False,
+             },
+             "uvicorn.access": {
+                 "level": "INFO",
+                 "handlers": ["console"],
+                 "propagate": False,
+             },
+        },
+    }
+    logging.config.dictConfig(logging_config)
+
+def get_logger(service_name: str, log_level: str = "INFO") -> logging.Logger:
+    """Get a configured logger for a service."""
     logger = logging.getLogger(service_name)
     
     if not logger.handlers:
-        logger.setLevel(logging.INFO)
-        
-        # Create console handler
-        handler = logging.StreamHandler()
-        formatter = logging.Formatter(
-            '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-        )
-        handler.setFormatter(formatter)
-        logger.addHandler(handler)
+        # If handler not already configured by dictConfig
+        logger.setLevel(getattr(logging, log_level.upper()))
     
     return logger
 

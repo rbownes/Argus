@@ -9,12 +9,12 @@ services:
       - PYTHONPATH=/app
       - LOG_LEVEL=INFO
       - API_KEY=${API_KEY}
-      - QUERY_STORAGE_URL=http://query-storage:8000
-      - EVALUATION_STORAGE_URL=http://evaluation-storage:8000
+      - QUERY_STORAGE_URL=http://item-storage-queries:8000
+      - EVALUATION_STORAGE_URL=http://item-storage-metrics:8000
       - JUDGE_SERVICE_URL=http://judge-service:8000
     depends_on:
-      - query-storage
-      - evaluation-storage
+      - item-storage-queries
+      - item-storage-metrics
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
@@ -28,20 +28,20 @@ services:
           cpus: '0.5'
           memory: 512M
 
-  query-storage:
+  item-storage-queries:
     build:
       context: .
-      dockerfile: query_storage/dockerfile
+      dockerfile: item_storage/dockerfile
     ports:
       - "8001:8000"
-    volumes:
-      - ./data/query_storage:/app/query_storage_data
     environment:
       - PYTHONPATH=/app
       - LOG_LEVEL=INFO
       - API_KEY=${API_KEY}
-      - QUERY_STORAGE_TYPE=${QUERY_STORAGE_TYPE:-postgres}
       - DATABASE_URL=${DATABASE_URL}
+      - ITEM_TYPE_NAME=query
+      - ITEM_TYPE_CATEGORY_NAME=theme
+      - ITEM_STORAGE_TABLE=items_queries
     depends_on:
       - postgres
     restart: unless-stopped
@@ -57,18 +57,22 @@ services:
           cpus: '0.5'
           memory: 512M
 
-  evaluation-storage:
+  item-storage-metrics:
     build:
       context: .
-      dockerfile: evaluation_storage/dockerfile
+      dockerfile: item_storage/dockerfile
     ports:
       - "8002:8000"
-    volumes:
-      - ./data/evaluation_storage:/app/evaluation_storage_data
     environment:
       - PYTHONPATH=/app
       - LOG_LEVEL=INFO
       - API_KEY=${API_KEY}
+      - DATABASE_URL=${DATABASE_URL}
+      - ITEM_TYPE_NAME=metric
+      - ITEM_TYPE_CATEGORY_NAME=metric_type
+      - ITEM_STORAGE_TABLE=items_metrics
+    depends_on:
+      - postgres
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
@@ -104,12 +108,12 @@ services:
       - POSTGRES_PASSWORD=postgres
       - POSTGRES_DB=panopticon
       - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/panopticon
-      - QUERY_STORAGE_URL=http://query-storage:8000
-      - EVALUATION_STORAGE_URL=http://evaluation-storage:8000
+      - QUERY_STORAGE_URL=http://item-storage-queries:8000
+      - EVALUATION_STORAGE_URL=http://item-storage-metrics:8000
     depends_on:
       - postgres
-      - query-storage
-      - evaluation-storage
+      - item-storage-queries
+      - item-storage-metrics
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
