@@ -34,6 +34,9 @@ class EvaluationResult(Base):
     
     def to_dict(self) -> Dict[str, Any]:
         """Convert model to dictionary."""
+        # Create a copy of result_metadata to avoid refresh issues
+        metadata = self.result_metadata.copy() if self.result_metadata else None
+        
         return {
             "id": self.id,
             "query_id": self.query_id,
@@ -46,7 +49,7 @@ class EvaluationResult(Base):
             "score": self.score,
             "judge_model": self.judge_model,
             "timestamp": self.timestamp.isoformat() if self.timestamp else None,
-            "metadata": self.result_metadata
+            "metadata": metadata
         }
 
 class EvaluationResultRepository(Repository[EvaluationResult]):
