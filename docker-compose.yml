@@ -35,7 +35,7 @@ services:
     ports:
       - "8001:8000"
     volumes:
-      - query_data:/app/query_storage_data
+      - ./data/query_storage:/app/query_storage_data
     environment:
       - PYTHONPATH=/app
       - LOG_LEVEL=INFO
@@ -60,7 +60,7 @@ services:
     ports:
       - "8002:8000"
     volumes:
-      - evaluation_data:/app/evaluation_storage_data
+      - ./data/evaluation_storage:/app/evaluation_storage_data
     environment:
       - PYTHONPATH=/app
       - LOG_LEVEL=INFO
@@ -85,7 +85,7 @@ services:
     ports:
       - "8003:8000"
     volumes:
-      - judge_data:/app/judge_service_data
+      - ./data/judge_service:/app/judge_service_data
     environment:
       - PYTHONPATH=/app
       - LOG_LEVEL=INFO
@@ -126,7 +126,7 @@ services:
       - POSTGRES_PASSWORD=postgres
       - POSTGRES_DB=panopticon
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - ./data/postgres:/var/lib/postgresql/data
     ports:
       - "5432:5432"
     healthcheck:
@@ -148,7 +148,7 @@ services:
     ports:
       - "8005:8000"
     volumes:
-      - model_registry_data:/app/model_registry_data
+      - ./data/model_registry:/app/model_registry_data
     environment:
       - PYTHONPATH=/app
       - LOG_LEVEL=INFO
@@ -211,19 +211,4 @@ services:
           cpus: '0.5'
           memory: 512M
 
-volumes:
-  query_data:
-    external: true
-    name: panopticon_query_data
-  evaluation_data:
-    external: true
-    name: panopticon_evaluation_data
-  judge_data:
-    external: true
-    name: panopticon_judge_data
-  postgres_data:
-    external: true
-    name: panopticon_postgres_data
-  model_registry_data:
-    external: true
-    name: panopticon_model_registry_data
+# No named volumes needed with bind mounts

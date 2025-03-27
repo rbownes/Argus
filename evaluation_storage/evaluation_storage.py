@@ -11,7 +11,7 @@ import logging
 class EvaluationStorage:
     """Storage for evaluation metrics using ChromaDB vector database."""
     
-    def __init__(self, persist_directory: str = "./evaluation_storage_data"):
+    def __init__(self, persist_directory: str = "/app/evaluation_storage_data"):
         """
         Initialize ChromaDB client and collection.
         
