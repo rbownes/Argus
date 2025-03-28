@@ -22,6 +22,7 @@ dependencies = [
     "python-json-logger>=2.0.7",
     "asyncpg>=0.28.0",  # For async database operations
     "sentence-transformers>=2.2.2",  # For embedding generation with vector search
+    "httpx>=0.25.2",  # For HTTP client in API gateway functionality
 ]
 
 [project.optional-dependencies]
@@ -32,7 +33,6 @@ dev = [
     "isort>=5.12.0",
     "mypy>=1.7.1",
     "ruff>=0.1.8",
-    "httpx>=0.25.2",
 ]
 
 [tool.pytest]

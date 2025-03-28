@@ -112,9 +112,9 @@ def get_env_var(key: str, default: Optional[str] = None, required: bool = False)
     return value
 
 # API extension utilities
-def create_api_app(title: str, description: str, version: str = "0.1.0") -> FastAPI:
+def create_api_app(title: str, description: str, version: str = "0.1.0", **kwargs) -> FastAPI:
     """Create a FastAPI application with standard configuration."""
-    app = FastAPI(title=title, description=description, version=version)
+    app = FastAPI(title=title, description=description, version=version, **kwargs)
     
     # Add CORS middleware
     app.add_middleware(

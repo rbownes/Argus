@@ -13,8 +13,10 @@ services:
       - EVALUATION_STORAGE_URL=http://item-storage-metrics:8000
       - JUDGE_SERVICE_URL=http://judge-service:8000
     depends_on:
-      - item-storage-queries
-      - item-storage-metrics
+      item-storage-queries:
+        condition: service_started
+      item-storage-metrics:
+        condition: service_started
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
@@ -43,7 +45,8 @@ services:
       - ITEM_TYPE_CATEGORY_NAME=theme
       - ITEM_STORAGE_TABLE=items_queries
     depends_on:
-      - postgres
+      postgres:
+        condition: service_healthy
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
@@ -72,7 +75,8 @@ services:
       - ITEM_TYPE_CATEGORY_NAME=metric_type
       - ITEM_STORAGE_TABLE=items_metrics
     depends_on:
-      - postgres
+      postgres:
+        condition: service_healthy
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
@@ -111,9 +115,12 @@ services:
       - QUERY_STORAGE_URL=http://item-storage-queries:8000
       - EVALUATION_STORAGE_URL=http://item-storage-metrics:8000
     depends_on:
-      - postgres
-      - item-storage-queries
-      - item-storage-metrics
+      postgres:
+        condition: service_healthy
+      item-storage-queries:
+        condition: service_started
+      item-storage-metrics:
+        condition: service_started
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
@@ -175,7 +182,8 @@ services:
       - POSTGRES_DB=panopticon
       - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/panopticon
     depends_on:
-      - postgres
+      postgres:
+        condition: service_healthy
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
@@ -206,8 +214,10 @@ services:
       - POSTGRES_DB=panopticon
       - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/panopticon
     depends_on:
-      - postgres
-      - judge-service
+      postgres:
+        condition: service_healthy
+      judge-service:
+        condition: service_started
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]

@@ -193,15 +193,7 @@ class PgJudgeStorage:
                 max_overflow=20
             )
             
-            # Create tables
-            self._create_tables()
-            
-            self.logger.info("PostgreSQL connection established")
-            
-            # Create repository for evaluation results
-            self.results_repo = EvaluationResultRepository(self.db, EvaluationResult)
-            
-            # Initialize embedding model for vector searches
+            # Initialize embedding model for vector searches first
             try:
                 self.embedding_model = SentenceTransformer("all-MiniLM-L6-v2")
                 self.embedding_dimension = 384  # Dimension for all-MiniLM-L6-v2
@@ -209,6 +201,14 @@ class PgJudgeStorage:
             except Exception as e:
                 self.logger.error(f"Failed to initialize embedding model: {str(e)}")
                 raise
+            
+            # Create tables after embedding model is initialized
+            self._create_tables()
+            
+            self.logger.info("PostgreSQL connection established")
+            
+            # Create repository for evaluation results
+            self.results_repo = EvaluationResultRepository(self.db, EvaluationResult)
                 
         except Exception as e:
             self.logger.error(f"Failed to initialize PostgreSQL: {str(e)}")
