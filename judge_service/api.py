@@ -165,7 +165,13 @@ async def evaluate_single_query(request: QueryEvaluationRequest):
                     message=f"Failed to retrieve evaluation prompt: {str(e)}"
                 )
                 
-            evaluation_prompt = metric["prompt"]
+            evaluation_prompt = metric.get("item")
+            if not evaluation_prompt:
+                # Handle case where 'item' key might be missing unexpectedly
+                raise ApiError(
+                    status_code=500,
+                    message=f"Evaluation prompt data incomplete for ID: {prompt_id}. Expected 'item' key."
+                )
             
             # Run evaluation
             try:
@@ -231,15 +237,25 @@ async def evaluate_theme_queries(request: ThemeEvaluationRequest):
         # Process each query
         results = []
         for query_data in queries:
+            # Check if the expected key 'item' exists and is not empty
+            query_text = query_data.get("item")
+            if not query_text:
+                storage.logger.error(f"Skipping query due to missing or empty 'item' field: {query_data.get('id', 'Unknown ID')}")
+                results.append({
+                    "query_id": query_data.get("id"),
+                    "error": "Query data format error: missing 'item' field."
+                })
+                continue # Skip this iteration if query text is missing
+
             eval_request = QueryEvaluationRequest(
-                query=query_data["query"],
+                query=query_text,
                 model_id=request.model_id,
                 theme=request.theme,
                 evaluation_prompt_ids=request.evaluation_prompt_ids,
                 judge_model=request.judge_model,
                 model_provider=request.model_provider,
                 metadata={
-                    "query_id": query_data["id"],
+                    "query_id": query_data.get("id"),
                     **(request.metadata or {})
                 }
             )
