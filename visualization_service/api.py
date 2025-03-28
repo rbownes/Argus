@@ -11,15 +11,13 @@ from fastapi.staticfiles import StaticFiles
 import logging
 from pydantic import BaseModel, Field
 import json
+from shared.utils import setup_logging
 from visualization_service.database import VisualizationDB
 from visualization_service.dashboard import Dashboard
 import pandas as pd
 
-# Configure logging
-logging.basicConfig(
-    level=os.getenv("LOG_LEVEL", "INFO"),
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-)
+# Call logging setup early
+setup_logging(log_level=os.environ.get("LOG_LEVEL", "INFO"))
 logger = logging.getLogger("visualization_service.api")
 
 # Initialize API
@@ -105,7 +103,7 @@ async def api_root():
 async def health_check():
     """Health check endpoint."""
     # Check database connection
-    db_healthy = db.check_connection()
+    db_healthy = await db.check_connection()
     
     if db_healthy:
         return {"status": "healthy", "database": "connected"}
@@ -373,7 +371,7 @@ async def get_judge_models(
         # Also try to get models from our database if we can
         db_models = []
         try:
-            db_models = dashboard.db.get_available_models()
+            db_models = await dashboard.db.get_available_models()
         except Exception:
             pass
         

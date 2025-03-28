@@ -10,7 +10,10 @@ from datetime import datetime
 import json
 import traceback
 
-from shared.utils import create_api_app, ApiResponse, ResponseStatus, ApiError
+from shared.utils import create_api_app, ApiResponse, ResponseStatus, ApiError, setup_logging
+
+# Call logging setup early
+setup_logging(log_level=os.environ.get("LOG_LEVEL", "INFO"))
 from shared.middleware import add_middleware
 from .models import ProviderConfig, ModelConfig, CompletionRequest, CompletionResponse
 from .registry_storage import ModelRegistryStorage

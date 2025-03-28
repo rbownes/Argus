@@ -12,7 +12,7 @@ class QueryStorageClient:
     
     def __init__(self):
         """Initialize client with service URL from environment."""
-        base_url = os.environ.get("QUERY_STORAGE_URL", "http://query-storage:8000")
+        base_url = os.environ.get("QUERY_STORAGE_URL", "http://item-storage-queries:8000")
         self.client = ServiceClient(base_url)
         self.logger = logging.getLogger("query_storage_client")
     
@@ -43,7 +43,7 @@ class EvaluationStorageClient:
     
     def __init__(self):
         """Initialize client with service URL from environment."""
-        base_url = os.environ.get("EVALUATION_STORAGE_URL", "http://evaluation-storage:8000")
+        base_url = os.environ.get("EVALUATION_STORAGE_URL", "http://item-storage-metrics:8000")
         self.client = ServiceClient(base_url)
         self.logger = logging.getLogger("evaluation_storage_client")
     

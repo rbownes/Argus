@@ -43,11 +43,11 @@ class Dashboard:
         """
         self.logger.info("Generating dashboard summary")
         try:
-            summary = self.db.get_dashboard_summary(start_date, end_date, models, themes)
+            summary = await self.db.get_dashboard_summary(start_date, end_date, models, themes)
             
             # Add available filter options
-            summary["available_models"] = self.db.get_available_models()
-            summary["available_themes"] = self.db.get_available_themes()
+            summary["available_models"] = await self.db.get_available_models()
+            summary["available_themes"] = await self.db.get_available_themes()
             
             return summary
         except Exception as e:
@@ -83,7 +83,7 @@ class Dashboard:
                 time_grouping = "day"
             
             # Get data from database
-            df = self.db.get_model_performance_over_time(
+            df = await self.db.get_model_performance_over_time(
                 start_date, end_date, models, themes, time_grouping
             )
             
@@ -171,7 +171,7 @@ class Dashboard:
         self.logger.info("Generating model comparison data")
         try:
             # Get data from database
-            df = self.db.get_model_comparison(start_date, end_date, models, themes)
+            df = await self.db.get_model_comparison(start_date, end_date, models, themes)
             
             if df.empty:
                 return {"models": [], "themes": [], "data": []}
@@ -245,7 +245,7 @@ class Dashboard:
                 })
             
             # Score distribution data
-            histogram_data = self.db.get_score_distribution(
+            histogram_data = await self.db.get_score_distribution(
                 start_date, end_date, models, themes
             )
             
@@ -281,7 +281,7 @@ class Dashboard:
         self.logger.info("Generating theme analysis data")
         try:
             # Get heatmap data
-            heatmap_df = self.db.get_theme_analysis(start_date, end_date, models, themes)
+            heatmap_df = await self.db.get_theme_analysis(start_date, end_date, models, themes)
             
             if heatmap_df.empty:
                 return {"heatmap": {"x": [], "y": [], "z": []}}
@@ -305,7 +305,7 @@ class Dashboard:
             }
             
             # Theme performance over time
-            timeline_df = self.db.get_model_performance_over_time(
+            timeline_df = await self.db.get_model_performance_over_time(
                 start_date, end_date, models, themes, "week"
             )
             
@@ -387,7 +387,7 @@ class Dashboard:
             offset = (page - 1) * page_size if page > 0 else 0
             
             # Get results with pagination
-            results, total_count = self.db.get_filtered_results(
+            results, total_count = await self.db.get_filtered_results(
                 start_date=start_date,
                 end_date=end_date,
                 models=models,
@@ -440,7 +440,7 @@ class Dashboard:
         self.logger.info("Getting filter options")
         try:
             # Get models from both database and judge service
-            db_models = self.db.get_available_models()
+            db_models = await self.db.get_available_models()
             
             # Try to get models from judge service directly
             judge_models = []
@@ -473,8 +473,8 @@ class Dashboard:
             # Get themes and prompts from database
             return {
                 "models": all_models,
-                "themes": self.db.get_available_themes(),
-                "evaluation_prompts": self.db.get_available_evaluation_prompts()
+                "themes": await self.db.get_available_themes(),
+                "evaluation_prompts": await self.db.get_available_evaluation_prompts()
             }
         except Exception as e:
             self.logger.error(f"Error getting filter options: {str(e)}")

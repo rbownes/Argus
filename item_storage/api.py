@@ -5,8 +5,12 @@ from fastapi import Depends, Query
 from pydantic import BaseModel, Field
 from typing import Dict, List, Optional
 import os
+import logging
 from shared.utils import (create_api_app, ApiResponse, ResponseStatus, ApiError,
-                          PaginationParams, paginate_results)
+                         PaginationParams, paginate_results, setup_logging)
+
+# Call logging setup early
+setup_logging(log_level=os.environ.get("LOG_LEVEL", "INFO"))
 from shared.middleware import add_middleware
 from .storage_factory import get_item_storage  # Factory returns the correct instance
 

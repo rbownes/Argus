@@ -16,11 +16,15 @@ from shared.utils import (
     ResponseStatus, 
     ApiError, 
     PaginationParams,
-    paginate_results
+    paginate_results,
+    setup_logging
 )
+
+# Call logging setup early
+setup_logging(log_level=os.environ.get("LOG_LEVEL", "INFO"))
 from shared.config import ServiceConfig
 from shared.middleware import add_middleware
-from .judge_storage import EvaluationResult
+from .pg_judge_storage import EvaluationResult
 from .storage_factory import get_judge_storage
 from .service_clients import QueryStorageClient, EvaluationStorageClient
 
@@ -342,7 +346,7 @@ def detect_provider_from_id(model_id: str) -> str:
 # Function to register a new model
 async def register_new_model(model_data: Dict[str, Any]) -> bool:
     """
-    Register a new model with the Provider Manager.
+    Register a new model with the Model Registry.
     
     Args:
         model_data: Dictionary containing the model information
@@ -351,8 +355,12 @@ async def register_new_model(model_data: Dict[str, Any]) -> bool:
         True if the model was registered successfully, False otherwise
     """
     try:
-        # Use the provider manager to register the model
-        return storage.provider_manager.register_model(model_data)
+        # Use the Model Registry to register the model
+        response = await storage.model_registry_client.post(
+            "/api/v1/models",
+            data=model_data
+        )
+        return response.get("status") == "success"
     except Exception as e:
         storage.logger.error(f"Error registering new model: {str(e)}")
         return False

@@ -8,11 +8,169 @@ import json
 from datetime import datetime
 from typing import List, Dict, Optional, Any, Tuple, Union
 from sentence_transformers import SentenceTransformer
-from sqlalchemy import text
+from sqlalchemy import text, Column, String, Integer, Float, DateTime, JSON, Text, and_, or_, between
 from shared.db import Database, Base, Repository
 from shared.service_client import ServiceClient
 from shared.utils import ApiError
-from .judge_storage import EvaluationResult, EvaluationResultRepository
+
+class EvaluationResult(Base):
+    """SQLAlchemy model for evaluation results."""
+    __tablename__ = 'evaluation_results'
+    
+    id = Column(String, primary_key=True)
+    query_id = Column(String, index=True)
+    query_text = Column(Text)
+    output_text = Column(Text)
+    model_id = Column(String, index=True)
+    theme = Column(String, index=True)
+    evaluation_prompt_id = Column(String, index=True)
+    evaluation_prompt = Column(Text)
+    score = Column(Float, index=True)
+    judge_model = Column(String, index=True)
+    timestamp = Column(DateTime, index=True, default=datetime.utcnow)
+    result_metadata = Column(JSON)
+    
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert model to dictionary."""
+        # Safely handle result_metadata to avoid session refresh issues
+        # Don't call .copy() which can trigger a session refresh
+        if hasattr(self, 'result_metadata') and self.result_metadata is not None:
+            try:
+                # Try to convert to dict if it's not already
+                if isinstance(self.result_metadata, dict):
+                    metadata = dict(self.result_metadata)
+                else:
+                    metadata = dict(self.result_metadata)
+            except Exception:
+                # Fallback if can't convert
+                metadata = None
+        else:
+            metadata = None
+        
+        # Handle timestamp similarly
+        if hasattr(self, 'timestamp') and self.timestamp is not None:
+            try:
+                timestamp_str = self.timestamp.isoformat()
+            except Exception:
+                timestamp_str = None
+        else:
+            timestamp_str = None
+        
+        return {
+            "id": self.id,
+            "query_id": self.query_id,
+            "query_text": self.query_text,
+            "output_text": self.output_text,
+            "model_id": self.model_id,
+            "theme": self.theme,
+            "evaluation_prompt_id": self.evaluation_prompt_id,
+            "evaluation_prompt": self.evaluation_prompt,
+            "score": self.score,
+            "judge_model": self.judge_model,
+            "timestamp": timestamp_str,
+            "metadata": metadata
+        }
+
+class EvaluationResultRepository(Repository[EvaluationResult]):
+    """Repository for evaluation results."""
+    
+    def get_filtered_results(
+        self,
+        theme: Optional[str] = None,
+        model_id: Optional[str] = None,
+        evaluation_prompt_id: Optional[str] = None,
+        min_score: Optional[float] = None,
+        max_score: Optional[float] = None,
+        start_date: Optional[datetime] = None,
+        end_date: Optional[datetime] = None,
+        limit: int = 100,
+        skip: int = 0
+    ) -> Tuple[List[Dict[str, Any]], int]:
+        """
+        Get evaluation results with filtering.
+        
+        Args:
+            theme: Filter by theme
+            model_id: Filter by model ID
+            evaluation_prompt_id: Filter by evaluation prompt ID
+            min_score: Minimum score
+            max_score: Maximum score
+            start_date: Start date for filtering
+            end_date: End date for filtering
+            limit: Maximum number of results to return
+            skip: Number of results to skip for pagination
+            
+        Returns:
+            Tuple of (results as dictionaries, total_count)
+        """
+        with self.db.get_session() as session:
+            # Build query with filters
+            query = session.query(EvaluationResult)
+            filter_conditions = []
+            
+            if theme:
+                filter_conditions.append(EvaluationResult.theme == theme)
+            if model_id:
+                filter_conditions.append(EvaluationResult.model_id == model_id)
+            if evaluation_prompt_id:
+                filter_conditions.append(EvaluationResult.evaluation_prompt_id == evaluation_prompt_id)
+            if min_score is not None:
+                filter_conditions.append(EvaluationResult.score >= min_score)
+            if max_score is not None:
+                filter_conditions.append(EvaluationResult.score <= max_score)
+            if start_date and end_date:
+                filter_conditions.append(
+                    between(EvaluationResult.timestamp, start_date, end_date)
+                )
+            elif start_date:
+                filter_conditions.append(EvaluationResult.timestamp >= start_date)
+            elif end_date:
+                filter_conditions.append(EvaluationResult.timestamp <= end_date)
+            
+            if filter_conditions:
+                query = query.filter(and_(*filter_conditions))
+            
+            # Get total count
+            total_count = query.count()
+            
+            # Apply pagination and sort by timestamp descending
+            results = query.order_by(EvaluationResult.timestamp.desc()).offset(skip).limit(limit).all()
+            
+            # Convert to dictionaries within the session context
+            result_dicts = []
+            for result in results:
+                # Safely extract all attributes to avoid session dependency
+                result_dict = {
+                    "id": result.id,
+                    "query_id": result.query_id,
+                    "query_text": result.query_text,
+                    "output_text": result.output_text,
+                    "model_id": result.model_id,
+                    "theme": result.theme,
+                    "evaluation_prompt_id": result.evaluation_prompt_id,
+                    "evaluation_prompt": result.evaluation_prompt,
+                    "score": float(result.score) if result.score is not None else None,
+                    "judge_model": result.judge_model,
+                    "timestamp": result.timestamp.isoformat() if result.timestamp else None,
+                }
+                
+                # Handle metadata separately to avoid session refresh issues
+                if hasattr(result, 'result_metadata') and result.result_metadata is not None:
+                    try:
+                        # Make a deep copy of the metadata to detach it from the session
+                        if isinstance(result.result_metadata, dict):
+                            result_dict["metadata"] = dict(result.result_metadata)
+                        else:
+                            result_dict["metadata"] = dict(result.result_metadata)
+                    except Exception as e:
+                        logging.warning(f"Failed to convert metadata to dict: {str(e)}")
+                        result_dict["metadata"] = None
+                else:
+                    result_dict["metadata"] = None
+                
+                result_dicts.append(result_dict)
+            
+            return result_dicts, total_count
 
 class PgJudgeStorage:
     """Storage for LLM outputs and evaluation results using PostgreSQL with pgvector extension."""
