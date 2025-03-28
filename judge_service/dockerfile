@@ -35,8 +35,6 @@ COPY --from=builder /build/venv /app/venv
 
 # Copy application code
 COPY judge_service/ ./judge_service/
-COPY query_storage/ ./query_storage/
-COPY evaluation_storage/ ./evaluation_storage/
 COPY shared/ ./shared/
 COPY migrations/ ./migrations/
 
