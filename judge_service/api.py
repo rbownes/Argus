@@ -115,9 +115,13 @@ async def evaluate_single_query(request: QueryEvaluationRequest):
             new_model = {
                 "id": request.model_id,
                 "name": request.model_id,  # Use ID as name initially
-                "provider": provider,
+                "provider_id": provider,
                 "is_judge_compatible": False,  # Default to false until verified
-                "auto_registered": True  # Flag as auto-registered
+                "capabilities": ["chat", "completion"],  # Default capabilities
+                "config": {
+                    "temperature_default": 0.7,
+                    "max_tokens_default": 1024
+                }
             }
             
             # Register the new model

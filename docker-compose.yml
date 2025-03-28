@@ -114,6 +114,7 @@ services:
       - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/panopticon
       - QUERY_STORAGE_URL=http://item-storage-queries:8000
       - EVALUATION_STORAGE_URL=http://item-storage-metrics:8000
+      - MODEL_REGISTRY_URL=http://model-registry:8000
     depends_on:
       postgres:
         condition: service_healthy
