@@ -2,10 +2,10 @@
 Storage implementation for model registry.
 """
 from sqlalchemy import (
-    create_engine, Column, String, Integer, Float, 
-    DateTime, JSON, Text, Boolean, ForeignKey, Table
+    Column, String, Integer, Float, 
+    DateTime, JSON, Text, Boolean, ForeignKey, Table, select
 )
-from sqlalchemy.orm import relationship, sessionmaker, declarative_base
+from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from datetime import datetime
 import json
@@ -14,7 +14,7 @@ import uuid
 from typing import Dict, List, Optional, Any, Tuple
 import logging
 
-Base = declarative_base()
+from shared.db import Base, Database
 
 class Provider(Base):
     """SQLAlchemy model for LLM providers."""
@@ -80,15 +80,15 @@ class ModelRegistryStorage:
                 "postgresql://postgres:postgres@postgres:5432/panopticon"
             )
             
-        self.engine = create_engine(db_url)
-        Base.metadata.create_all(self.engine)
-        self.Session = sessionmaker(bind=self.engine)
+        # Initialize shared Database instance with async support
+        self.db = Database(connection_string=db_url)
+        self.db.create_tables()
         self.logger.info(f"Model registry database initialized at {db_url}")
         
-        # Load default configurations
-        self._load_defaults()
+        # We'll need to call _load_defaults in an async context
+        # This will be done when the app starts up instead of in __init__
         
-    def _load_defaults(self):
+    async def _load_defaults(self):
         """Load default models and providers from configuration files."""
         try:
             # Load default providers
@@ -97,7 +97,7 @@ class ModelRegistryStorage:
                 with open(providers_path, "r") as f:
                     providers = json.load(f)
                     for provider in providers:
-                        self.add_provider(provider, skip_if_exists=True)
+                        await self.add_provider(provider, skip_if_exists=True)
                         
             # Load default models
             models_path = os.path.join(os.path.dirname(__file__), "config", "default_models.json")
@@ -105,11 +105,11 @@ class ModelRegistryStorage:
                 with open(models_path, "r") as f:
                     models = json.load(f)
                     for model in models:
-                        self.add_model(model, skip_if_exists=True)
+                        await self.add_model(model, skip_if_exists=True)
         except Exception as e:
             self.logger.error(f"Error loading default configurations: {str(e)}")
     
-    def get_provider(self, provider_id: str) -> Optional[Dict[str, Any]]:
+    async def get_provider(self, provider_id: str) -> Optional[Dict[str, Any]]:
         """
         Get provider by ID.
         
@@ -119,8 +119,10 @@ class ModelRegistryStorage:
         Returns:
             Provider data or None if not found
         """
-        with self.Session() as session:
-            provider = session.query(Provider).filter(Provider.id == provider_id).first()
+        async with self.db.get_async_session() as session:
+            stmt = select(Provider).where(Provider.id == provider_id)
+            result = await session.execute(stmt)
+            provider = result.scalar_one_or_none()
             if not provider:
                 return None
                 
@@ -137,15 +139,17 @@ class ModelRegistryStorage:
                 "created_at": provider.created_at.isoformat() if provider.created_at else None
             }
     
-    def get_all_providers(self) -> List[Dict[str, Any]]:
+    async def get_all_providers(self) -> List[Dict[str, Any]]:
         """
         Get all providers.
         
         Returns:
             List of provider data
         """
-        with self.Session() as session:
-            providers = session.query(Provider).all()
+        async with self.db.get_async_session() as session:
+            stmt = select(Provider)
+            result = await session.execute(stmt)
+            providers = result.scalars().all()
             return [
                 {
                     "id": provider.id,
@@ -162,7 +166,7 @@ class ModelRegistryStorage:
                 for provider in providers
             ]
     
-    def add_provider(self, provider_data: Dict[str, Any], skip_if_exists: bool = False) -> Optional[Dict[str, Any]]:
+    async def add_provider(self, provider_data: Dict[str, Any], skip_if_exists: bool = False) -> Optional[Dict[str, Any]]:
         """
         Add a new provider to the registry.
         
@@ -173,9 +177,11 @@ class ModelRegistryStorage:
         Returns:
             Added provider data or None if skipped
         """
-        with self.Session() as session:
+        async with self.db.get_async_session() as session:
             # Check if provider already exists
-            existing = session.query(Provider).filter(Provider.id == provider_data["id"]).first()
+            stmt = select(Provider).where(Provider.id == provider_data["id"])
+            result = await session.execute(stmt)
+            existing = result.scalar_one_or_none()
             if existing and skip_if_exists:
                 self.logger.info(f"Provider {provider_data['id']} already exists, skipping")
                 return None
@@ -185,7 +191,7 @@ class ModelRegistryStorage:
                 for key, value in provider_data.items():
                     if key != "id" and hasattr(existing, key):
                         setattr(existing, key, value)
-                session.commit()
+                await session.commit()
                 
                 self.logger.info(f"Updated provider {provider_data['id']}")
                 
@@ -216,7 +222,7 @@ class ModelRegistryStorage:
                     created_at=datetime.utcnow()
                 )
                 session.add(provider)
-                session.commit()
+                await session.commit()
                 
                 self.logger.info(f"Added provider {provider_data['id']}")
                 
@@ -233,7 +239,7 @@ class ModelRegistryStorage:
                     "created_at": provider.created_at.isoformat() if provider.created_at else None
                 }
     
-    def get_model(self, model_id: str) -> Optional[Dict[str, Any]]:
+    async def get_model(self, model_id: str) -> Optional[Dict[str, Any]]:
         """
         Get model by ID.
         
@@ -243,8 +249,10 @@ class ModelRegistryStorage:
         Returns:
             Model data or None if not found
         """
-        with self.Session() as session:
-            model = session.query(Model).filter(Model.id == model_id).first()
+        async with self.db.get_async_session() as session:
+            stmt = select(Model).where(Model.id == model_id)
+            result = await session.execute(stmt)
+            model = result.scalar_one_or_none()
             if not model:
                 return None
                 
@@ -258,15 +266,17 @@ class ModelRegistryStorage:
                 "created_at": model.created_at.isoformat() if model.created_at else None
             }
     
-    def get_all_models(self) -> List[Dict[str, Any]]:
+    async def get_all_models(self) -> List[Dict[str, Any]]:
         """
         Get all models.
         
         Returns:
             List of model data
         """
-        with self.Session() as session:
-            models = session.query(Model).all()
+        async with self.db.get_async_session() as session:
+            stmt = select(Model)
+            result = await session.execute(stmt)
+            models = result.scalars().all()
             return [
                 {
                     "id": model.id,
@@ -280,7 +290,7 @@ class ModelRegistryStorage:
                 for model in models
             ]
     
-    def add_model(self, model_data: Dict[str, Any], skip_if_exists: bool = False) -> Optional[Dict[str, Any]]:
+    async def add_model(self, model_data: Dict[str, Any], skip_if_exists: bool = False) -> Optional[Dict[str, Any]]:
         """
         Add a new model to the registry.
         
@@ -291,15 +301,19 @@ class ModelRegistryStorage:
         Returns:
             Added model data or None if skipped
         """
-        with self.Session() as session:
+        async with self.db.get_async_session() as session:
             # Check if model already exists
-            existing = session.query(Model).filter(Model.id == model_data["id"]).first()
+            stmt = select(Model).where(Model.id == model_data["id"])
+            result = await session.execute(stmt)
+            existing = result.scalar_one_or_none()
             if existing and skip_if_exists:
                 self.logger.info(f"Model {model_data['id']} already exists, skipping")
                 return None
                 
             # Check if provider exists
-            provider = session.query(Provider).filter(Provider.id == model_data["provider_id"]).first()
+            provider_stmt = select(Provider).where(Provider.id == model_data["provider_id"])
+            provider_result = await session.execute(provider_stmt)
+            provider = provider_result.scalar_one_or_none()
             if not provider:
                 raise ValueError(f"Provider {model_data['provider_id']} not found")
                 
@@ -308,7 +322,7 @@ class ModelRegistryStorage:
                 for key, value in model_data.items():
                     if key != "id" and hasattr(existing, key):
                         setattr(existing, key, value)
-                session.commit()
+                await session.commit()
                 
                 self.logger.info(f"Updated model {model_data['id']}")
                 
@@ -333,7 +347,7 @@ class ModelRegistryStorage:
                     created_at=datetime.utcnow()
                 )
                 session.add(model)
-                session.commit()
+                await session.commit()
                 
                 self.logger.info(f"Added model {model_data['id']}")
                 
@@ -347,7 +361,7 @@ class ModelRegistryStorage:
                     "created_at": model.created_at.isoformat() if model.created_at else None
                 }
     
-    def log_completion(
+    async def log_completion(
         self,
         model_id: str,
         query: str,
@@ -368,9 +382,11 @@ class ModelRegistryStorage:
         Returns:
             Logged completion data
         """
-        with self.Session() as session:
+        async with self.db.get_async_session() as session:
             # Check if model exists
-            model = session.query(Model).filter(Model.id == model_id).first()
+            stmt = select(Model).where(Model.id == model_id)
+            result = await session.execute(stmt)
+            model = result.scalar_one_or_none()
             if not model:
                 raise ValueError(f"Model {model_id} not found")
                 
@@ -386,7 +402,7 @@ class ModelRegistryStorage:
                 created_at=datetime.utcnow()
             )
             session.add(log)
-            session.commit()
+            await session.commit()
             
             self.logger.info(f"Logged completion {log_id} for model {model_id}")
             

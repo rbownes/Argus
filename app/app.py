@@ -53,7 +53,8 @@ async def list_services():
             "endpoints": [
                 {"path": "/api/v1/items", "method": "POST", "description": "Store a query"},
                 {"path": "/api/v1/items/type/{item_type}", "method": "GET", "description": "Get queries by theme"},
-                {"path": "/api/v1/items/search", "method": "POST", "description": "Search similar queries"}
+                {"path": "/api/v1/items/search", "method": "POST", "description": "Search similar queries"},
+                {"path": "/api/v1/items/{item_id}", "method": "GET", "description": "Get query by ID"}
             ]
         },
         {
@@ -63,7 +64,8 @@ async def list_services():
             "endpoints": [
                 {"path": "/api/v1/items", "method": "POST", "description": "Store an evaluation metric"},
                 {"path": "/api/v1/items/type/{item_type}", "method": "GET", "description": "Get metrics by type"},
-                {"path": "/api/v1/items/search", "method": "POST", "description": "Search similar metrics"}
+                {"path": "/api/v1/items/search", "method": "POST", "description": "Search similar metrics"},
+                {"path": "/api/v1/items/{item_id}", "method": "GET", "description": "Get metric by ID"}
             ]
         },
         {
@@ -73,7 +75,8 @@ async def list_services():
             "endpoints": [
                 {"path": "/api/v1/evaluate/query", "method": "POST", "description": "Evaluate a single query"},
                 {"path": "/api/v1/evaluate/theme", "method": "POST", "description": "Evaluate all queries of a theme"},
-                {"path": "/api/v1/results", "method": "GET", "description": "Get evaluation results"}
+                {"path": "/api/v1/results", "method": "GET", "description": "Get evaluation results"},
+                {"path": "/api/v1/models", "method": "GET", "description": "List available LLM models"}
             ]
         },
         {

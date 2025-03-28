@@ -32,6 +32,16 @@ add_middleware(app, api_key=api_key)
 # Initialize storage
 storage = ModelRegistryStorage()
 
+# Load default configurations at startup
+@app.on_event("startup")
+async def load_defaults():
+    """Load default models and providers at startup."""
+    try:
+        await storage._load_defaults()
+        logger.info("Loaded default models and providers")
+    except Exception as e:
+        logger.error(f"Error loading default configurations: {str(e)}")
+
 # Dictionary to cache adapter instances
 adapter_instances = {}
 
@@ -42,7 +52,7 @@ logger = logging.getLogger("model_registry")
 async def list_models():
     """List all registered models."""
     try:
-        models = storage.get_all_models()
+        models = await storage.get_all_models()
         return ApiResponse(
             status=ResponseStatus.SUCCESS,
             data=models
@@ -55,7 +65,7 @@ async def list_models():
 async def get_model(model_id: str):
     """Get model by ID."""
     try:
-        model = storage.get_model(model_id)
+        model = await storage.get_model(model_id)
         if not model:
             raise ApiError(status_code=404, message=f"Model not found: {model_id}")
         
@@ -74,12 +84,12 @@ async def add_model(model_config: ModelConfig):
     """Add a new model to the registry."""
     try:
         # Check if provider exists
-        provider = storage.get_provider(model_config.provider_id)
+        provider = await storage.get_provider(model_config.provider_id)
         if not provider:
             raise ApiError(status_code=404, message=f"Provider not found: {model_config.provider_id}")
         
         # Add the model
-        model = storage.add_model(model_config.dict())
+        model = await storage.add_model(model_config.dict())
         
         return ApiResponse(
             status=ResponseStatus.SUCCESS,
@@ -96,7 +106,7 @@ async def add_model(model_config: ModelConfig):
 async def list_providers():
     """List all registered providers."""
     try:
-        providers = storage.get_all_providers()
+        providers = await storage.get_all_providers()
         return ApiResponse(
             status=ResponseStatus.SUCCESS,
             data=providers
@@ -109,7 +119,7 @@ async def list_providers():
 async def get_provider(provider_id: str):
     """Get provider by ID."""
     try:
-        provider = storage.get_provider(provider_id)
+        provider = await storage.get_provider(provider_id)
         if not provider:
             raise ApiError(status_code=404, message=f"Provider not found: {provider_id}")
         
@@ -127,7 +137,7 @@ async def get_provider(provider_id: str):
 async def add_provider(provider_config: ProviderConfig):
     """Add a new provider to the registry."""
     try:
-        provider = storage.add_provider(provider_config.dict())
+        provider = await storage.add_provider(provider_config.dict())
         
         return ApiResponse(
             status=ResponseStatus.SUCCESS,
@@ -143,12 +153,12 @@ async def generate_completion(request: CompletionRequest):
     """Generate a completion using the specified model."""
     try:
         # Get model information
-        model = storage.get_model(request.model_id)
+        model = await storage.get_model(request.model_id)
         if not model:
             raise ApiError(status_code=404, message=f"Model not found: {request.model_id}")
         
         # Get provider information
-        provider = storage.get_provider(model["provider_id"])
+        provider = await storage.get_provider(model["provider_id"])
         if not provider:
             raise ApiError(status_code=404, message=f"Provider not found: {model['provider_id']}")
         
@@ -176,7 +186,7 @@ async def generate_completion(request: CompletionRequest):
             )
             
             # Log the completion
-            storage.log_completion(
+            await storage.log_completion(
                 model_id=model["id"],
                 query=json.dumps(request.messages),
                 response=completion["content"],
@@ -197,7 +207,7 @@ async def generate_completion(request: CompletionRequest):
             trace = traceback.format_exc()
             logger.error(f"Completion error: {error_msg}\n{trace}")
             
-            storage.log_completion(
+            await storage.log_completion(
                 model_id=model["id"],
                 query=json.dumps(request.messages),
                 error=error_msg,

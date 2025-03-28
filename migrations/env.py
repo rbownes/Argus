@@ -13,7 +13,8 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')
 # Import Base from our shared module
 from shared.db import Base
 # Import all models to ensure they're registered with the Base
-from judge_service.judge_storage import EvaluationResult
+from judge_service.pg_judge_storage import EvaluationResult
+from model_registry.registry_storage import Provider, Model, CompletionLog
 
 # This is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
