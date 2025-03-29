@@ -333,50 +333,68 @@ async def list_services():
 async def proxy_request(request: Request, target_url: str, endpoint_override: str = None) -> Response:
     """
     Forward a request to a target service and return the response.
-    
+
     Args:
         request: Original request
         target_url: URL to forward the request to
         endpoint_override: Optional specific endpoint to use instead of derived path
-        
+
     Returns:
         Response from the target service
     """
-    # Get request path excluding the API route prefix
-    path_parts = request.url.path.split("/")
-    service_path = "/".join(path_parts[2:])  # Skip '/api/service_name'
-    
-    # Build target URL
     if endpoint_override:
-        url = f"{target_url}/api/v1/{endpoint_override}"
+        # Use override directly if provided
+        service_path = endpoint_override
+        logging.info(f"Using endpoint override: '{service_path}'")
     else:
+        # Calculate path relative to the service base (/api/<service_name>/)
+        path_parts = request.url.path.split("/")
+        if len(path_parts) > 3: # Check if there's anything after /api/<service_name>/
+            # Correctly skip '', 'api', '<service_name>'
+            service_path = "/".join(path_parts[3:])
+            logging.info(f"Calculated service path: '{service_path}' from {request.url.path}")
+        else:
+            # Handle root case, e.g., /api/judge -> proxies to /api/v1/
+            # Check if target service handles requests to /api/v1/
+            # judge_service does not have a root handler for /api/v1/, so this will likely 404 at the target.
+            service_path = ""
+            logging.info(f"Handling root request for {request.url.path}, setting service_path to empty.")
+
+    # Build the final target URL
+    # Ensure no double slashes if service_path is empty
+    if service_path:
         url = f"{target_url}/api/v1/{service_path}"
-    
+    else:
+        url = f"{target_url}/api/v1" # Target the base v1 path
+
+    # Add query parameters from original request to the target URL
+    if request.query_params:
+        url += "?" + str(request.query_params)
+
+    logging.info(f"Proxying {request.method} {request.url.path} to -> {url}") # Log the constructed URL
+
     # Get request method
     method = request.method
-    
+
     # Get headers, excluding host
     headers = {k: v for k, v in request.headers.items() if k.lower() != "host"}
-    
-    # Get query parameters
-    params = dict(request.query_params)
-    
+
     try:
         if method == "GET":
-            response = await http_client.get(url, headers=headers, params=params)
+            response = await http_client.get(url, headers=headers) # Pass params in URL
         elif method == "POST":
-            # Get request body
             body = await request.body()
-            response = await http_client.post(url, headers=headers, params=params, content=body)
+            response = await http_client.post(url, headers=headers, content=body) # Pass params in URL
         elif method == "PUT":
             body = await request.body()
-            response = await http_client.put(url, headers=headers, params=params, content=body)
+            response = await http_client.put(url, headers=headers, content=body) # Pass params in URL
         elif method == "DELETE":
-            response = await http_client.delete(url, headers=headers, params=params)
+            response = await http_client.delete(url, headers=headers) # Pass params in URL
         else:
-            raise HTTPException(status_code=405, detail=f"Method {method} not allowed")
-        
+            raise HTTPException(status_code=405, detail=f"Method {method} not allowed for proxy")
+
         # Return response
+        logging.info(f"Proxy response status: {response.status_code} from {url}")
         return Response(
             content=response.content,
             status_code=response.status_code,
@@ -386,6 +404,15 @@ async def proxy_request(request: Request, target_url: str, endpoint_override: st
     except httpx.RequestError as e:
         logging.error(f"Error forwarding request to {url}: {str(e)}")
         raise HTTPException(status_code=503, detail=f"Error communicating with service: {str(e)}")
+    except httpx.HTTPStatusError as e: # Catch specific HTTP errors from the target
+        logging.error(f"Target service returned error {e.response.status_code} from {url}: {e.response.text}")
+        # Return the actual error from the target service
+        return Response(
+            content=e.response.content,
+            status_code=e.response.status_code,
+            headers=dict(e.response.headers),
+            media_type=e.response.headers.get("content-type")
+        )
 
 @app.get("/api/queries")
 async def proxy_query_storage_get(request: Request):

@@ -1,402 +1,266 @@
-# Panopticon
+Okay, I have modified the README to use `curl` commands for the API examples in the "User Journey" section.
 
-[![API Documentation](https://img.shields.io/badge/API-Documentation-blue)](http://localhost:8000/docs)
+```markdown
+# Panopticon 🔭: LLM Evaluation & Monitoring System
+
+[![Build Status](https://img.shields.io/badge/build-passing-brightgreen)](...) <!-- Replace with your CI/CD badge -->
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Python Version](https://img.shields.io/badge/python-3.12+-blue.svg)](https://www.python.org/downloads/)
 
-## Overview
+Panopticon is a microservices-based system designed for the systematic evaluation, comparison, and monitoring of Large Language Model (LLM) performance.
 
-Panopticon is a comprehensive framework for evaluating and comparing Large Language Models (LLMs) across diverse tasks and metrics. With its microservices architecture, Panopticon enables systematic testing of multiple models from different providers through a unified interface.
+## Overview & Intention
 
-**Key Features:**
+In the rapidly evolving landscape of LLMs, understanding how different models perform on *your specific tasks* is crucial. Panopticon provides a framework to:
 
-- **Multi-provider Support**: Evaluate models from OpenAI, Anthropic, Google, and more
-- **Metric-based Evaluation**: Define custom evaluation criteria to assess model outputs
-- **Thematic Testing**: Organize test queries by themes to evaluate specific capabilities
-- **Interactive Dashboard**: Visualize and compare model performance across metrics
-- **Extensible Architecture**: Easily add new models, providers, and evaluation criteria
+1.  **Define Custom Evaluations:** Move beyond generic benchmarks. Create queries (prompts) relevant to your domain and define specific evaluation criteria (metrics/evaluation prompts) to measure what matters most to you.
+2.  **Compare Models & Providers:** Systematically run the same queries and evaluations across different LLMs (e.g., GPT-4 vs. Claude 3 vs. Gemini Pro) or different versions of the same model.
+3.  **Monitor Performance Over Time:** Track how model performance changes as models are updated or as you refine your prompts and evaluation strategies.
+4.  **Visualize Results:** Gain insights through an integrated dashboard showing trends, comparisons, and detailed results.
 
-## User Journey
+Panopticon aims to provide an objective, configurable, and centralized platform for your LLM quality assurance and monitoring needs.
 
-### 1. Setup and Installation
+## ✨ Features
 
-```bash
-# Clone the repository
-git clone https://github.com/yourusername/panopticon.git
-cd panopticon
+*   **Microservice Architecture:** Scalable and maintainable design using FastAPI and Docker.
+*   **Configurable Evaluation:** Define your own queries (prompts) and evaluation metrics (judge prompts).
+*   **Multi-Provider Support:** Integrates with various LLM providers via LiteLLM and custom adapters (OpenAI, Google Gemini, Anthropic included by default).
+*   **Centralized Model Registry:** Manage available models and their configurations.
+*   **Judge-Based Scoring:** Utilizes a powerful LLM (e.g., GPT-4) to score responses based on your criteria.
+*   **Vector Storage & Search:** Stores queries and metrics with vector embeddings (using `sentence-transformers` and `pgvector`) for semantic similarity search.
+*   **Data Persistence:** Uses PostgreSQL to store queries, metrics, model configurations, and detailed evaluation results.
+*   **Visualization Dashboard:** A React-based frontend to explore evaluation trends, compare models, analyze themes, and view detailed results.
+*   **API Gateway:** A central entry point (`main-app`) for interacting with the system.
 
-# Create .env file with your API keys (copy from .env.example)
-cp .env.example .env
+## 🏗️ Architecture
 
-# Edit the .env file to add your API keys
-nano .env
+Panopticon employs a microservice architecture:
 
-# Start all services with Docker Compose
-docker-compose up -d
-```
+*   **`main-app` (API Gateway):** The front door. Receives API requests and routes them to the appropriate backend service. Handles authentication.
+*   **`item-storage-queries`:** Stores user-defined input queries/prompts, categorized by theme. Includes vector embeddings for search.
+*   **`item-storage-metrics`:** Stores user-defined evaluation prompts/criteria, categorized by type. Includes vector embeddings for search.
+*   **`judge-service`:** The evaluation engine. Fetches queries and metrics, interacts with the `model-registry` to get LLM responses, uses a judge model for scoring, and stores results in the database.
+*   **`model-registry`:** Manages LLM providers and models. Provides a unified interface for generating text completions via adapters.
+*   **`visualization-service`:** Backend API and React frontend for the dashboard. Queries the database to aggregate and present evaluation data.
+*   **`postgres`:** Shared PostgreSQL database with `pgvector` extension, storing all persistent data except embeddings managed within item-storage.
+*   **`migrations`:** Alembic setup for managing database schema evolution.
 
-This will start the following services:
-- Main App: http://localhost:8000
-- Visualization Dashboard: http://localhost:8004
-
-### 2. Creating Test Queries
-
-Test queries are the prompts you'll use to evaluate different language models. They should be organized by themes to focus on specific capabilities.
-
-#### From the Command Line:
-
-```bash
-# Add a science explanation query
-curl -X POST http://localhost:8001/api/v1/items \
-  -H "Content-Type: application/json" \
-  -H "X-API-Key: dev_api_key_for_testing" \
-  -d '{
-    "item": "Explain quantum computing to a high school student.",
-    "type": "science_explanation", 
-    "metadata": {
-      "difficulty": "medium",
-      "domain": "physics"
-    }
-  }'
-
-# Add a reasoning query
-curl -X POST http://localhost:8001/api/v1/items \
-  -H "Content-Type: application/json" \
-  -H "X-API-Key: dev_api_key_for_testing" \
-  -d '{
-    "item": "A bat and ball cost $1.10 in total. The bat costs $1.00 more than the ball. How much does the ball cost?",
-    "type": "reasoning",
-    "metadata": {
-      "difficulty": "medium",
-      "domain": "mathematics"
-    }
-  }'
-```
-
-#### Bulk Import:
-
-For larger query sets, prepare a JSON file with your queries:
-
-```json
-[
-  {
-    "item": "Explain how nuclear fusion works.",
-    "type": "science_explanation",
-    "metadata": {"difficulty": "hard", "domain": "physics"}
-  },
-  {
-    "item": "Write a short story about a robot discovering emotions.",
-    "type": "creative_writing",
-    "metadata": {"style": "narrative", "length": "medium"}
-  }
-]
-```
-
-Then import them:
-
-```bash
-curl -X POST http://localhost:8001/api/v1/items/bulk \
-  -H "Content-Type: application/json" \
-  -H "X-API-Key: dev_api_key_for_testing" \
-  -d @queries.json
-```
-
-### 3. Defining Evaluation Metrics
-
-Evaluation metrics are the criteria used to assess model responses. Good metrics should be specific and measurable.
-
-#### From the Command Line:
-
-```bash
-# Create a scientific accuracy metric
-curl -X POST http://localhost:8002/api/v1/items \
-  -H "Content-Type: application/json" \
-  -H "X-API-Key: dev_api_key_for_testing" \
-  -d '{
-    "item": "Evaluate the scientific accuracy of this explanation on a scale of 1-10. Consider: Are all stated facts correct? Are any important concepts missing or misrepresented? Provide your rating with a brief justification.",
-    "type": "scientific_accuracy",
-    "metadata": {
-      "description": "Measures factual correctness of scientific explanations",
-      "scale": "1-10"
-    }
-  }'
-
-# Create a clarity metric
-curl -X POST http://localhost:8002/api/v1/items \
-  -H "Content-Type: application/json" \
-  -H "X-API-Key: dev_api_key_for_testing" \
-  -d '{
-    "item": "Rate the clarity of this explanation on a scale of 1-10. Consider: Is it easy to understand? Does it use appropriate language for the target audience? Are complex concepts broken down effectively? Provide your rating with a brief justification.",
-    "type": "clarity",
-    "metadata": {
-      "description": "Measures how clearly the information is communicated",
-      "scale": "1-10"
-    }
-  }'
-```
-
-#### Using the Dashboard:
-
-1. Navigate to http://localhost:8004
-2. Go to the "Data Management" section
-3. Click on "Add Metric"
-4. Fill in the evaluation prompt, metric type, and metadata
-5. Click "Save"
-
-#### Recommended Metric Types:
-
-- **accuracy**: Factual correctness
-- **clarity**: Clear communication
-- **completeness**: Comprehensive coverage
-- **creativity**: Original thinking
-- **reasoning**: Logical thinking
-- **helpfulness**: Practical utility
-- **safety**: Avoiding harmful content
-
-### 4. Running Evaluations
-
-Once you have queries and metrics, you can evaluate models against them.
-
-Register you model first
-
-```bash
-curl -X POST http://localhost:8005/api/v1/models \
-  -H "Content-Type: application/json" \
-  -H "X-API-Key: dev_api_key_for_testing" \
-  -d '{
-    "id": "gpt-4o-2024-11-20",
-    "name": "gpt-4o-2024-11-20",
-    "provider_id": "openai",
-    "is_available": true,
-    "config": {
-      "max_tokens": 4096
-    }
-  }'
-
-```
-
-#### Evaluating a Single Query:
-
-```bash
-curl -X POST http://localhost:8003/api/v1/evaluate/query \
-  -H "Content-Type: application/json" \
-  -H "X-API-Key: dev_api_key_for_testing" \
-  -d '{
-    "query": "Explain quantum computing to a high school student.",
-    "model_id": "gpt-4o-2024-11-20",
-    "theme": "science_explanation",
-    "evaluation_prompt_ids": ["scientific_accuracy", "clarity"],
-    "judge_model": "gpt-4o-2024-11-20",
-    "model_provider": "openai"
-  }'
-```
-
-#### Evaluating All Queries in a Theme:
-
-```bash
-curl -X POST http://localhost:8000/api/judge/evaluate/theme \
-  -H "Content-Type: application/json" \
-  -H "X-API-Key: your_api_key" \
-  -d '{
-    "theme": "science_explanation",
-    "model_id": "gemini-1.5-pro",
-    "evaluation_prompt_ids": ["scientific_accuracy", "clarity"],
-    "judge_model": "gpt-4-turbo",
-    "model_provider": "google"
-  }'
-```
-
-#### Using the Dashboard:
-
-1. Navigate to http://localhost:8004
-2. Go to the "Run Evaluation" section
-3. Select the theme, model, and evaluation metrics
-4. Click "Start Evaluation"
-5. View real-time progress and results
-
-### 5. Analyzing Results
-
-After running evaluations, you can analyze the results through the visualization dashboard.
-
-1. **Navigate** to http://localhost:8004
-2. **Dashboard Overview**:
-   - Summary statistics of recent evaluations
-   - Model performance trends over time
-
-3. **Model Comparison**:
-   - Select models to compare side-by-side
-   - View performance across different metrics and themes
-   - Identify strengths and weaknesses of each model
-
-4. **Theme Analysis**:
-   - See how models perform on specific themes
-   - Drill down into specific capabilities (creative writing, reasoning, etc.)
-
-5. **Detailed Results**:
-   - View individual responses and evaluations
-   - Read the judge model's justification for each score
-   - Filter results by model, theme, and score range
-
-6. **Data Export**:
-   - Export results as CSV for further analysis
-   - Generate PDF reports for stakeholders
-
-### 6. Evaluating New Models
-
-Adding a new model for evaluation is simple:
-
-1. **Automatic Registration**:
-   - The first time you use a new model in an evaluation, it will be automatically registered
-   - Panopticon will attempt to detect the provider based on the model ID
-
-   ```bash
-   curl -X POST http://localhost:8000/api/judge/evaluate/query \
-     -H "Content-Type: application/json" \
-     -H "X-API-Key: your_api_key" \
-     -d '{
-       "query": "Explain what makes quantum computers faster than classical computers.",
-       "model_id": "claude-3-haiku-20240307",
-       "theme": "science_explanation",
-       "evaluation_prompt_ids": ["scientific_accuracy", "clarity"],
-       "judge_model": "gpt-4-turbo",
-       "model_provider": "anthropic"
-     }'
-   ```
-
-2. **Manual Registration** (for more control):
-   - Register the model explicitly with custom configuration
-
-   ```bash
-   curl -X POST http://localhost:8000/api/models \
-     -H "Content-Type: application/json" \
-     -H "X-API-Key: your_api_key" \
-     -d '{
-       "id": "claude-3-opus-20240229",
-       "provider_id": "anthropic",
-       "config": {
-         "max_tokens": 4096,
-         "temperature": 0.7
-       }
-     }'
-   ```
-
-3. **Dashboard Registration**:
-   - Navigate to http://localhost:8004/models
-   - Click "Add New Model"
-   - Fill in the model details and configuration
-   - Click "Register Model"
-
-### 7. Continuous Evaluation
-
-For ongoing model evaluation:
-
-1. **Schedule Regular Evaluations**:
-   - Use cron jobs or orchestration tools to run evaluations regularly
-   - Track performance trends over time as models are updated
-
-2. **Add New Queries and Metrics**:
-   - Continuously expand your test set with new queries
-   - Refine evaluation metrics based on your specific needs
-
-3. **Monitor API Usage**:
-   - Track token usage and costs across different providers
-   - Optimize evaluation strategies for cost-effectiveness
-
-## System Architecture
-
-Panopticon is composed of several specialized microservices:
+### Solution Diagram (Mermaid)
 
 ```mermaid
 graph TD
-    Client[Client Application] --> MainApp[Main App]
-    MainApp --> QueryStorage[Query Storage]
-    MainApp --> EvalStorage[Evaluation Storage]
-    MainApp --> JudgeService[Judge Service]
-    
-    JudgeService --> ModelRegistry[Model Registry]
-    JudgeService --> QueryStorage
-    JudgeService --> EvalStorage
-    
-    ModelRegistry --> OpenAI[OpenAI API]
-    ModelRegistry --> Anthropic[Anthropic API]
-    ModelRegistry --> Google[Google API]
-    
-    JudgeService --> VisService[Visualization Service]
-    VisService --> Database[(PostgreSQL)]
-    JudgeService --> Database
-    
-    subgraph "Core Services"
-        MainApp
-        QueryStorage
-        EvalStorage
-        JudgeService
+    User -->|API Request| GW(main-app API Gateway :8000)
+
+    subgraph Panopticon System
+        GW -->|Forward Request| ISQ(item-storage-queries :8001)
+        GW -->|Forward Request| ISM(item-storage-metrics :8002)
+        GW -->|Forward Request| Judge(judge-service :8003)
+        GW -->|Forward Request| MR(model-registry :8005)
+        GW -->|Forward Request| Viz(visualization-service :8004)
+
+        ISQ -->|Store/Fetch Queries| DB[(Postgres DB :5432)]
+        ISM -->|Store/Fetch Metrics| DB
+        Judge -->|Fetch Queries| ISQ
+        Judge -->|Fetch Metrics| ISM
+        Judge -->|Run Query/Evaluate| MR
+        Judge -->|Store Results| DB
+        MR -->|Store/Fetch Models/Providers| DB
+        MR -->|External API Call| LLMAPI[External LLM APIs]
+        Viz -->|Fetch Aggregated Data| DB
+        Viz -->|Fetch Model Info| Judge # Or directly to MR? Check code - Fetching via Judge is safer decoupling
     end
-    
-    subgraph "Model Access"
-        ModelRegistry
-        OpenAI
-        Anthropic
-        Google
-    end
-    
-    subgraph "Analytics"
-        VisService
-        Database
-    end
-    
-    style MainApp fill:#f9f,stroke:#333,stroke-width:2px
-    style JudgeService fill:#bbf,stroke:#333,stroke-width:2px
-    style ModelRegistry fill:#bfb,stroke:#333,stroke-width:2px
-    style VisService fill:#fbb,stroke:#333,stroke-width:2px
+
+    User -->|View Dashboard| Viz
+
+    style GW fill:#f9f,stroke:#333,stroke-width:2px
+    style DB fill:#ccf,stroke:#333,stroke-width:2px
 ```
 
-## Configuration
+*(This diagram shows the primary request flows. GitHub automatically renders Mermaid diagrams).*
 
-### Environment Variables
+## 🚀 Getting Started
 
-Configure the system using these environment variables:
+### Prerequisites
 
+*   **Docker:** [Install Docker](https://docs.docker.com/get-docker/)
+*   **Docker Compose:** Usually included with Docker Desktop.
+*   **Git:** To clone the repository.
+*   **Python 3.12+:** (Optional, for local development or running scripts)
+*   **LLM API Keys:** Obtain API keys for the providers you want to use (OpenAI, Google Gemini, Anthropic, etc.).
+*   **`curl`:** Command-line tool for making HTTP requests.
+
+### Setup Steps
+
+1.  **Clone the Repository:**
+    ```bash
+    git clone https://github.com/yourusername/panopticon.git # Replace with your repo URL
+    cd panopticon
+    ```
+
+2.  **Configure Environment Variables:**
+    *   Copy the example environment file:
+        ```bash
+        cp .env.example .env
+        ```
+    *   Edit the `.env` file:
+        *   **Set a secure `API_KEY`** for internal service communication and external access. **Replace `your_api_key_here` below with this value.**
+        *   Add your LLM API keys (`LITELLM_API_KEY`, `GOOGLE_API_KEY`, `ANTHROPIC_API_KEY`, etc.). `LITELLM_API_KEY` is often used for OpenAI by default in LiteLLM, but check provider configs.
+        *   Review `DATABASE_URL` and other PostgreSQL settings if you're not using the default Docker setup.
+
+3.  **Build and Run with Docker Compose:**
+    ```bash
+    docker-compose up --build -d
+    ```
+    *   `--build`: Forces Docker to build the images based on the Dockerfiles.
+    *   `-d`: Runs the containers in detached mode (in the background).
+
+4.  **Verify Services:**
+    *   Check container logs: `docker-compose logs -f` (Press `Ctrl+C` to exit)
+    *   Wait for services to become healthy (check `docker-compose ps`). Health checks are configured.
+    *   Test the main API gateway:
+        ```bash
+        curl -H "X-API-Key: dev_api_key_for_testing" http://localhost:8000/health
+        ```
+    *   Test individual services (e.g., `curl http://localhost:8001/health`).
+
+5.  **Access the Dashboard:**
+    *   Open your web browser and navigate to `http://localhost:8004`.
+
+## 📡 API Endpoints Overview
+
+The primary way to interact with Panopticon is through the `main-app` API gateway running on port `8000`. An API key (`X-API-Key` header) matching the one in your `.env` file is required for most endpoints.
+
+*   **`GET /`**: Basic info about the Panopticon system.
+*   **`GET /health`**: Health check for the API gateway.
+*   **`GET /api/services`**: Lists the available backend services and their primary endpoints.
+*   **`POST /api/queries`**: Store a new query (prompt). (Targets `item-storage-queries`).
+*   **`GET /api/queries/...`**: Retrieve or search queries. (Targets `item-storage-queries`).
+*   **`POST /api/metrics`**: Store a new evaluation metric (prompt). (Targets `item-storage-metrics`).
+*   **`GET /api/metrics/...`**: Retrieve or search metrics. (Targets `item-storage-metrics`).
+*   **`POST /api/judge/evaluate/query`**: Evaluate a single query against a model using specified metrics. (Targets `judge-service`).
+*   **`POST /api/judge/evaluate/theme`**: Evaluate all queries of a specific theme against a model. (Targets `judge-service`).
+*   **`GET /api/judge/results`**: Get detailed evaluation results stored by the judge service.
+*   **`GET /api/models`**: List models registered in the `model-registry`.
+*   **`GET /api/providers`**: List LLM providers registered in the `model-registry`.
+*   **`POST /api/completion`**: Directly generate text using a registered model (via `model-registry`).
+*   **`GET /api/dashboard/...`**: Endpoints consumed by the visualization frontend to get aggregated data, timelines, comparisons, etc. (Targets `visualization-service`).
+
+*Refer to the OpenAPI documentation available at `/api/docs` on the running `main-app` (http://localhost:8000/api/docs) for detailed request/response schemas.*
+
+## 🚶 User Journey: Evaluating LLMs
+
+Here’s a typical workflow for using Panopticon:
+
+1.  **Define Your Queries:**
+    *   Identify the tasks or prompts you want to evaluate (e.g., "Summarize the following text...", "Write Python code to...", "Explain this concept...").
+    *   Group related queries under a `theme` (e.g., "summarization", "coding", "qa").
+    *   **Action:** Send `POST` requests to `/api/queries` for each query:
+        ```bash
+        curl -X POST http://localhost:8000/api/queries \
+             -H "Content-Type: application/json" \
+             -H "X-API-Key: dev_api_key_for_testing" \
+             -d '{
+                   "item": "Summarize the provided article about renewable energy trends.",
+                   "type": "summarization",
+                   "metadata": { "source": "tech_crunch_article_123", "difficulty": "medium" }
+                 }'
+        ```
+    *   **Best Practice:** Use consistent and descriptive themes. Add relevant metadata for later filtering.
+
+2.  **Define Your Evaluation Metrics (Judge Prompts):**
+    *   Decide how you want to score the LLM's responses. Create prompts for the *judge* model.
+    *   **Action:** Send `POST` requests to `/api/metrics` for each evaluation criterion:
+        ```bash
+        curl -X POST http://localhost:8000/api/metrics \
+             -H "Content-Type: application/json" \
+             -H "X-API-Key: dev_api_key_for_testing" \
+             -d '{
+                   "item": "Evaluate the summary based on conciseness (1-10) and factual accuracy compared to the original text (1-10). Respond with ONLY a single score from 1 to 10, averaging the two criteria.",
+                   "type": "summary_quality",
+                   "metadata": { "version": "1.1", "author": "eval_team" }
+                 }'
+        ```
+    *   **Best Practice:** Write clear, objective evaluation prompts for the judge. Ensure the prompt asks for a specific output format (like a single number). Keep track of the `id` returned in the response – you'll need it for evaluation.
+
+3.  **Run Evaluations:**
+    *   Choose the model(s) you want to test (e.g., `gpt-4o`, `claude-3-opus-20240229`) and the evaluation metric IDs from step 2.
+    *   **Action (Single Query):** Send a `POST` request to `/api/judge/evaluate/query`:
+        ```bash
+        curl -X POST http://localhost:8000/api/judge/evaluate/query \
+             -H "Content-Type: application/json" \
+             -H "X-API-Key: dev_api_key_for_testing" \
+             -d '{
+                   "query": "Summarize the provided article about renewable energy trends.",
+                   "model_id": "gpt-4o",
+                   "theme": "summarization",
+                   "evaluation_prompt_ids": ["<metric_id_from_step_2>"],
+                   "judge_model": "gpt-4"
+                 }'
+        ```
+    *   **Action (Entire Theme):** Send a `POST` request to `/api/judge/evaluate/theme`:
+        ```bash
+        curl -X POST http://localhost:8000/api/judge/evaluate/theme \
+             -H "Content-Type: application/json" \
+             -H "X-API-Key: dev_api_key_for_testing" \
+             -d '{
+                   "theme": "summarization",
+                   "model_id": "claude-3-opus-20240229",
+                   "evaluation_prompt_ids": ["<metric_id_from_step_2>"],
+                   "judge_model": "gpt-4",
+                   "limit": 50
+                 }'
+        ```
+    *   **Recommendation:** Start with evaluating single queries or small theme batches (`limit`) to ensure prompts and metrics work as expected before running large-scale evaluations. Repeat for different models.
+
+4.  **Analyze Results:**
+    *   **Action:** Open the Visualization Dashboard at `http://localhost:8004`.
+    *   Explore the different pages:
+        *   **Dashboard:** Overall summary statistics and trends.
+        *   **Model Comparison:** Side-by-side performance using bar and radar charts.
+        *   **Theme Analysis:** Heatmap showing model strengths/weaknesses across themes.
+        *   **Detailed Results:** A filterable table view of individual evaluation records.
+    *   **Action (Programmatic):** Use `GET /api/dashboard/results` with filters to fetch raw data for custom analysis (using `curl` or another HTTP client). Example:
+        ```bash
+        # Get first 10 results for 'summarization' theme by model 'gpt-4o'
+        curl -G http://localhost:8000/api/judge/results \
+             -H "X-API-Key: dev_api_key_for_testing" \
+             --data-urlencode "theme=summarization" \
+             --data-urlencode "model_id=gpt-4o" \
+             --data-urlencode "limit=10"
+        ```
+    *   **Best Practice:** Use the dashboard for high-level insights and trend spotting. Use the API or direct database queries for deep dives or specific statistical analysis.
+
+## 💻 Technology Stack
+
+*   **Backend:** Python, FastAPI
+*   **Frontend:** React, Vite, Tailwind CSS, Chart.js, Plotly.js
+*   **Database:** PostgreSQL, pgvector
+*   **LLM Interaction:** LiteLLM, sentence-transformers
+*   **Containerization:** Docker, Docker Compose
+*   **Database Migrations:** Alembic
+*   **Async:** `asyncio`, `aiohttp`, `asyncpg`
+
+## 🤝 Contributing
+
+Contributions are welcome! Please follow standard Forking Workflow:
+
+1.  Fork the repository.
+2.  Create a new branch (`git checkout -b feature/your-feature-name`).
+3.  Make your changes.
+4.  Commit your changes (`git commit -am 'Add some feature'`).
+5.  Push to the branch (`git push origin feature/your-feature-name`).
+6.  Create a new Pull Request.
+
+Please ensure your code follows the style guidelines (Black, Ruff, isort) and includes tests where applicable.
+
+## 📄 License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## 🤔 Support & Questions
+
+If you encounter issues or have questions, please file an issue on the GitHub repository.
+---
+
+*Happy Evaluating!* 🚀
 ```
-# API Authentication
-API_KEY=your_api_key_here
-
-# LLM API Keys
-LITELLM_API_KEY=your_openai_api_key_here
-GOOGLE_API_KEY=your_gemini_api_key_here
-ANTHROPIC_API_KEY=your_anthropic_api_key_here
-
-# Database Configuration
-POSTGRES_HOST=postgres
-POSTGRES_PORT=5432
-POSTGRES_USER=postgres
-POSTGRES_PASSWORD=postgres
-POSTGRES_DB=panopticon
-```
-
-### API Documentation
-
-Access Swagger documentation for each service at their respective URLs with the `/docs` path:
-- http://localhost:8000/docs (Main App)
-- http://localhost:8004/docs (Visualization Service)
-
-## Best Practices
-
-1. **Start Small**: Begin with a small set of well-crafted queries and metrics
-2. **Use Strong Judge Models**: Use powerful models like GPT-4 or Claude 3 Opus as judge models
-3. **Consistent Evaluation**: Use the same judge model across comparisons for fair results
-4. **Diverse Queries**: Include a diverse range of queries to test different capabilities
-5. **Clear Metrics**: Define clear, specific evaluation criteria with precise prompts
-6. **Multiple Metrics**: Evaluate models on several dimensions for a complete picture
-7. **Iterative Refinement**: Continuously improve your evaluation methodology based on results
-
-## Troubleshooting
-
-- **Service not responding**: Check container logs with `docker-compose logs [service-name]`
-- **Database connection issues**: Verify PostgreSQL container is running with `docker-compose ps`
-- **API key errors**: Ensure API keys are correctly set in your `.env` file
-- **Model provider errors**: Check that you have valid API keys for each provider you're using
-
-## Community and Support
-
-- **GitHub Issues**: Report bugs and feature requests
-- **Documentation**: Full documentation available at http://localhost:8000/docs
-- **Discord Community**: Join our community at [discord.gg/panopticon](https://discord.gg/panopticon)
